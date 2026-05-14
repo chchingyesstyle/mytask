@@ -51,8 +51,10 @@ def test_execute_tool_list_tasks(db_session):
     assert "Task A" in result
 
 def test_build_system_prompt_includes_tasks():
+    from datetime import datetime
     from ai.agent import build_system_prompt
     tasks = [{"id": 1, "title": "DB Migrate", "status": "todo", "priority": "high", "due_date": None, "project_name": None}]
     prompt = build_system_prompt(tasks)
     assert "DB Migrate" in prompt
     assert "todo" in prompt
+    assert datetime.utcnow().strftime("%Y-%m-%d") in prompt

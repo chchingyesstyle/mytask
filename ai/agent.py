@@ -93,16 +93,19 @@ def build_system_prompt(tasks: list[dict]) -> str:
     ).format(today, task_lines or "(no tasks yet)")
 
 def _find_task(args: dict, db: Session, owner_id: int):
-    if args.get("task_id"):
+    if args.get("task_id") is not None:
         return db.query(models.Task).filter(
             models.Task.id == args["task_id"],
             models.Task.owner_id == owner_id,
         ).first()
     if args.get("title_search"):
-        return db.query(models.Task).filter(
+        matches = db.query(models.Task).filter(
             models.Task.title.ilike("%{}%".format(args["title_search"])),
             models.Task.owner_id == owner_id,
-        ).first()
+        ).all()
+        if len(matches) > 1:
+            return "AMBIGUOUS:{}".format(args["title_search"])
+        return matches[0] if matches else None
     return None
 
 def execute_tool(name: str, args: dict, db: Session, owner_id: int) -> str:
@@ -127,7 +130,7 @@ def execute_tool(name: str, args: dict, db: Session, owner_id: int) -> str:
             try:
                 due = date.fromisoformat(args["due_date"])
             except ValueError:
-                pass
+                return "Invalid due_date '{}', expected YYYY-MM-DD.".format(args["due_date"])
         task = models.Task(
             title=args["title"],
             status=args.get("status", "todo"),
@@ -143,6 +146,8 @@ def execute_tool(name: str, args: dict, db: Session, owner_id: int) -> str:
 
     if name == "update_task":
         task = _find_task(args, db, owner_id)
+        if isinstance(task, str):
+            return "Multiple tasks match '{}', please specify task_id.".format(args.get("title_search"))
         if not task:
             return "Task not found."
         for field in ("status", "priority", "notes"):
@@ -152,16 +157,20 @@ def execute_tool(name: str, args: dict, db: Session, owner_id: int) -> str:
             try:
                 task.due_date = date.fromisoformat(args["due_date"])
             except ValueError:
-                pass
+                return "Invalid due_date '{}', expected YYYY-MM-DD.".format(args["due_date"])
         task.updated_at = datetime.utcnow()
         db.commit()
         return "Updated task '{}'.".format(task.title)
 
     if name == "delete_task":
         task = _find_task(args, db, owner_id)
+        if isinstance(task, str):
+            return "Multiple tasks match '{}', please specify task_id.".format(args.get("title_search"))
         if not task:
             return "Task not found."
         title = task.title
         db.delete(task)
         db.commit()
         return "Deleted task '{}'.".format(title)
+
+    return "Unknown tool: {}.".format(name)
