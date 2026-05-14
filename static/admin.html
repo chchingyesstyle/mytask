@@ -20,6 +20,17 @@
     </nav>
 
     <div class="admin-content">
+      <h2>Tag Management</h2>
+      <div class="create-user-form">
+        <div id="tag-error" class="error-msg" style="display:none"></div>
+        <div id="tag-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;min-height:32px"></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input id="new-tag-name" type="text" placeholder="Tag name" style="flex:1;min-width:120px">
+          <input id="new-tag-color" type="color" value="#4a90d9" style="width:40px;padding:2px;cursor:pointer">
+          <button id="create-tag-btn">Create Tag</button>
+        </div>
+      </div>
+
       <h2>User Management</h2>
 
       <div class="create-user-form">

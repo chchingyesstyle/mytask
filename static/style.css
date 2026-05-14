@@ -217,3 +217,56 @@ button.btn-secondary { background: var(--border); }
   .task-panel { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid var(--border); max-height: 45vh; }
   .chat-panel { max-height: 55vh; }
 }
+
+/* Dashboard strip */
+.dashboard-strip {
+  background: var(--bg-base); border-bottom: 1px solid var(--border);
+  padding: 10px 12px; flex-shrink: 0;
+}
+.dashboard-stats { display: flex; gap: 6px; margin-bottom: 8px; }
+.dashboard-stat {
+  flex: 1; border-radius: var(--r); padding: 6px 8px; text-align: center;
+  border: 1px solid transparent;
+}
+.dashboard-stat.overdue { background: #3d1515; border-color: var(--danger); }
+.dashboard-stat.today   { background: #2a1e0f; border-color: var(--warning); }
+.dashboard-stat.week    { background: #0f1f15; border-color: var(--success); }
+.stat-num { font-size: 18px; font-weight: 700; }
+.dashboard-stat.overdue .stat-num { color: var(--danger); }
+.dashboard-stat.today   .stat-num { color: var(--warning); }
+.dashboard-stat.week    .stat-num { color: var(--success); }
+.stat-label { color: var(--text-dim); font-size: 10px; }
+.briefing-line {
+  background: var(--bg-card); border-radius: var(--r); padding: 6px 10px;
+  font-size: 11px; color: var(--text-dim); line-height: 1.5;
+  display: flex; gap: 6px; align-items: flex-start;
+}
+.briefing-icon { flex-shrink: 0; }
+
+/* Tag pills on task cards */
+.tag-pills { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; align-items: center; }
+.tag-pill { font-size: 9px; padding: 1px 7px; border-radius: 8px; border: 1px solid transparent; }
+
+/* Subtask indicator on collapsed card */
+.subtask-indicator { color: var(--text-dim); font-size: 10px; }
+
+/* Subtask checklist in expanded task */
+.subtask-section { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
+.subtask-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 11px; }
+.subtask-row input[type="checkbox"] { cursor: pointer; flex-shrink: 0; accent-color: var(--success); }
+.subtask-row.done > span:first-of-type { text-decoration: line-through; color: var(--text-dim); }
+.subtask-nested-hint { color: var(--accent); font-size: 9px; cursor: pointer; flex-shrink: 0; }
+.add-step-row { color: var(--accent); font-size: 11px; cursor: pointer; margin-top: 4px; padding: 2px 0; }
+.add-step-row:hover { text-decoration: underline; }
+
+/* Tag picker in expanded task */
+.tag-picker-section { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
+.tag-picker-label { color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; }
+.tag-picker-list { display: flex; gap: 5px; flex-wrap: wrap; }
+.tag-picker-item {
+  cursor: pointer; font-size: 10px; padding: 2px 9px; border-radius: 8px;
+  border: 1px solid transparent; transition: opacity .15s;
+}
+.tag-picker-item.assigned { opacity: 1; }
+.tag-picker-item:not(.assigned) { opacity: 0.4; }
+.tag-picker-item:hover { opacity: 1; }

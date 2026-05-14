@@ -38,11 +38,35 @@
     <div class="split-view">
       <!-- Left: Task Panel -->
       <div class="task-panel">
+
+        <!-- Dashboard Panel -->
+        <div id="dashboard-strip" class="dashboard-strip" style="display:none">
+          <div class="dashboard-stats">
+            <div class="dashboard-stat overdue">
+              <div class="stat-num" id="stat-overdue-num">0</div>
+              <div class="stat-label">Overdue</div>
+            </div>
+            <div class="dashboard-stat today">
+              <div class="stat-num" id="stat-today-num">0</div>
+              <div class="stat-label">Due Today</div>
+            </div>
+            <div class="dashboard-stat week">
+              <div class="stat-num" id="stat-week-num">0</div>
+              <div class="stat-label">This Week</div>
+            </div>
+          </div>
+          <div id="dashboard-briefing" class="briefing-line" style="display:none">
+            <span class="briefing-icon">🤖</span>
+            <span id="briefing-text"></span>
+          </div>
+        </div>
+
         <div class="filter-bar" id="filter-bar">
           <button class="filter-btn active" id="filter-all">All</button>
           <button class="filter-btn" id="filter-today">Today</button>
           <button class="filter-btn" id="filter-overdue">Overdue</button>
           <span id="project-filters"></span>
+          <span id="tag-filters"></span>
         </div>
         <div id="task-list" class="task-list"></div>
         <div class="task-panel-footer">
@@ -55,7 +79,7 @@
         <div class="chat-header">
           <div class="ai-dot" id="ai-dot"></div>
           <span class="chat-title">AI Assistant</span>
-          <span class="chat-model">DeepSeek v4 Flash - NVIDIA</span>
+          <span class="chat-model">Llama 3.3 70B - NVIDIA</span>
         </div>
         <div id="chat-messages" class="chat-messages"></div>
         <div class="chat-input-row">
