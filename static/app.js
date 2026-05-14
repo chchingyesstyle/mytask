@@ -166,7 +166,7 @@ async function loadDashboard() {
     } else {
       briefingEl.style.display = 'none';
     }
-  } catch (e) {}
+  } catch (e) { console.warn('Dashboard load failed:', e); }
 }
 
 // Filters
@@ -436,7 +436,7 @@ async function loadAndRenderSubtasks(parentId, container) {
       showAddStepInput(parentId, container, addRow);
     });
     container.appendChild(addRow);
-  } catch (e) {}
+  } catch (e) { console.warn('Subtask load failed:', e); }
 }
 
 async function toggleSubtask(id, status, parentId, container) {
