@@ -1,24 +1,26 @@
 import os
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from database import engine, Base, SessionLocal
+from database import engine, Base
 from seed import seed_admin
 
-os.makedirs("static", exist_ok=True)
 os.makedirs("data", exist_ok=True)
+os.makedirs("static", exist_ok=True)
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="MyTask")
 
+# Routers registered in later tasks (Tasks 5–10):
+# app.include_router(auth_router, prefix="/api")
+# app.include_router(tasks_router, prefix="/api")
+# app.include_router(projects_router, prefix="/api")
+# app.include_router(users_router, prefix="/api")
+# app.include_router(chat_router, prefix="/api")
+
 @app.on_event("startup")
 def startup():
-    db = SessionLocal()
-    try:
-        seed_admin(db)
-    finally:
-        db.close()
+    seed_admin()
 
 @app.get("/")
 def root():
