@@ -24,6 +24,9 @@ def test_chat_streams_tokens(admin_headers):
     assert resp.status_code == 200
     assert "Hello" in resp.text
     assert "world" in resp.text
+    assert '"type": "done"' in resp.text
+    assert resp.headers["content-type"].startswith("text/event-stream")
+    assert resp.headers["cache-control"] == "no-cache"
 
 def test_chat_requires_auth(seeded_client):
     resp = seeded_client.post("/api/chat", json={"message": "hi", "history": []})
