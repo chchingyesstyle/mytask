@@ -1,7 +1,14 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Date, ForeignKey, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, DateTime, Date, ForeignKey, Text, Table
+from sqlalchemy.orm import relationship, backref
 from database import Base
+
+task_tags = Table(
+    "task_tags",
+    Base.metadata,
+    Column("task_id", Integer, ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True),
+    Column("tag_id", Integer, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
+)
 
 class User(Base):
     __tablename__ = "users"
@@ -22,6 +29,13 @@ class Project(Base):
     owner = relationship("User", back_populates="projects")
     tasks = relationship("Task", back_populates="project")
 
+class Tag(Base):
+    __tablename__ = "tags"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True, nullable=False)
+    color = Column(String(7), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 class Task(Base):
     __tablename__ = "tasks"
     id = Column(Integer, primary_key=True, index=True)
@@ -32,7 +46,16 @@ class Task(Base):
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     notes = Column(Text, nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    parent_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     owner = relationship("User", back_populates="tasks")
     project = relationship("Project", back_populates="tasks")
+    children = relationship(
+        "Task",
+        foreign_keys="[Task.parent_id]",
+        backref=backref("parent", remote_side="[Task.id]"),
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    tags = relationship("Tag", secondary=task_tags, lazy="selectin")
