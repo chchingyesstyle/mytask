@@ -106,3 +106,21 @@ def test_nested_depth_2(admin_headers):
     client.post("/api/tasks", json={"title": "Grandchild", "parent_id": child["id"]}, headers=headers)
     children = client.get(f"/api/tasks?parent_id={root['id']}", headers=headers).json()
     assert children[0]["subtask_count"] == 1
+
+def test_cannot_attach_subtask_to_other_users_task(client):
+    from tests.conftest import TestingSessionLocal
+    from auth import hash_password
+    import models
+    db = TestingSessionLocal()
+    alice = models.User(username="alice_sub", password_hash=hash_password("pw"), role="user")
+    bob = models.User(username="bob_sub", password_hash=hash_password("pw"), role="user")
+    db.add_all([alice, bob])
+    db.commit()
+    db.close()
+    alice_token = client.post("/api/auth/login", json={"username": "alice_sub", "password": "pw"}).json()["access_token"]
+    bob_token = client.post("/api/auth/login", json={"username": "bob_sub", "password": "pw"}).json()["access_token"]
+    alice_h = {"Authorization": f"Bearer {alice_token}"}
+    bob_h = {"Authorization": f"Bearer {bob_token}"}
+    alice_task = client.post("/api/tasks", json={"title": "Alice Task"}, headers=alice_h).json()
+    resp = client.post("/api/tasks", json={"title": "Bob Sub", "parent_id": alice_task["id"]}, headers=bob_h)
+    assert resp.status_code == 403

@@ -103,6 +103,15 @@ def create_task(
     current_user: models.User = Depends(get_current_user),
 ):
     task_data = req.model_dump(exclude={"tag_ids"})
+
+    # Validate parent_id ownership if provided
+    if task_data.get("parent_id"):
+        parent = db.query(models.Task).filter(models.Task.id == task_data["parent_id"]).first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent task not found")
+        if parent.owner_id != current_user.id and current_user.role != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to attach to this parent")
+
     task = models.Task(**task_data, owner_id=current_user.id)
     db.add(task)
     db.flush()
