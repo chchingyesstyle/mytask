@@ -25,18 +25,23 @@ def create_access_token(user_id: int, username: str, role: str) -> str:
     payload = {"sub": str(user_id), "username": username, "role": role, "exp": expire}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
+_401 = {"WWW-Authenticate": "Bearer"}
+
 def decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token", headers=_401)
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     import models
     payload = decode_token(token)
-    user = db.query(models.User).filter(models.User.id == int(payload["sub"])).first()
+    sub = payload.get("sub")
+    if not sub:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token", headers=_401)
+    user = db.query(models.User).filter(models.User.id == int(sub)).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found", headers=_401)
     return user
 
 def require_admin(current_user=Depends(get_current_user)):
