@@ -17,6 +17,18 @@ os.makedirs("static", exist_ok=True)
 
 Base.metadata.create_all(bind=engine)
 
+# Add columns introduced after initial deployment (create_all won't alter existing tables)
+def _migrate():
+    with engine.connect() as conn:
+        existing = {row[1] for row in conn.execute(__import__('sqlalchemy').text("PRAGMA table_info(tasks)"))}
+        if "parent_id" not in existing:
+            conn.execute(__import__('sqlalchemy').text(
+                "ALTER TABLE tasks ADD COLUMN parent_id INTEGER REFERENCES tasks(id)"
+            ))
+            conn.commit()
+
+_migrate()
+
 app = FastAPI(title="MyTask")
 
 app.include_router(auth_router.router)
