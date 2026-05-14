@@ -13,6 +13,7 @@ async function adminInit() {
 
 async function loadUsers() {
   var resp = await fetch('/api/users', { headers: authHeaders() });
+  if (!resp.ok) return;
   var users = await resp.json();
   var tbody = document.getElementById('user-tbody');
   while (tbody.firstChild) tbody.removeChild(tbody.firstChild);

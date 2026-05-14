@@ -68,6 +68,7 @@ function showLogin() {
 // Projects
 async function loadProjects() {
   const resp = await fetch('/api/projects', { headers: authHeaders() });
+  if (!resp.ok) { if (resp.status === 401) showLogin(); return; }
   allProjects = await resp.json();
   renderProjectFilters();
   populateProjectDropdown();
@@ -100,6 +101,7 @@ function populateProjectDropdown() {
 // Tasks
 async function loadTasks() {
   const resp = await fetch('/api/tasks', { headers: authHeaders() });
+  if (!resp.ok) { if (resp.status === 401) showLogin(); return; }
   allTasks = await resp.json();
   renderTasks();
   updateOverdueBadge();
@@ -283,7 +285,12 @@ async function createTask() {
     project_id: parseInt(document.getElementById('mt-project').value) || null,
     notes: document.getElementById('mt-notes').value.trim() || null,
   };
-  await fetch('/api/tasks', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+  var createResp = await fetch('/api/tasks', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+  if (!createResp.ok) {
+    var errData = await createResp.json();
+    alert(errData.detail || 'Error creating task.');
+    return;
+  }
   closeModal();
   await loadTasks();
 }
@@ -385,8 +392,10 @@ async function sendMessage() {
   document.getElementById('send-btn').disabled = false;
 }
 
-// Event wiring
+// Event wiring — only runs on the main app page (index.html)
 document.addEventListener('DOMContentLoaded', function() {
+  if (!document.getElementById('login-screen')) return;
+
   initApp();
 
   document.getElementById('login-btn').addEventListener('click', login);

@@ -115,6 +115,7 @@ button.btn-secondary { background: var(--border); }
 .task-card:hover { border-left-color: var(--accent); }
 .task-card.priority-high { border-left-color: var(--danger); }
 .task-card.priority-medium { border-left-color: var(--warning); }
+.task-card.priority-low { border-left-color: var(--success); }
 .task-card.status-done { opacity: .55; }
 
 .task-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
