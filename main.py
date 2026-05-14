@@ -5,6 +5,7 @@ from database import engine, Base
 from seed import seed_admin
 from routers import auth as auth_router
 from routers import tasks as tasks_router
+from routers import projects as projects_router
 
 os.makedirs("data", exist_ok=True)
 os.makedirs("static", exist_ok=True)
@@ -15,6 +16,7 @@ app = FastAPI(title="MyTask")
 
 app.include_router(auth_router.router)
 app.include_router(tasks_router.router)
+app.include_router(projects_router.router)
 
 # Routers registered in later tasks (Tasks 7–10):
 # app.include_router(projects_router, prefix="/api")
