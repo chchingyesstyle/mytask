@@ -2,6 +2,7 @@
 let currentUser = null;
 let allTasks = [];
 let allProjects = [];
+let allTags = [];
 let chatHistory = [];
 let activeFilter = 'all';
 let expandedTaskId = null;
@@ -13,12 +14,12 @@ function authHeaders() {
 }
 
 async function login() {
-  const username = document.getElementById('login-username').value.trim();
-  const password = document.getElementById('login-password').value;
-  const errEl = document.getElementById('login-error');
+  var username = document.getElementById('login-username').value.trim();
+  var password = document.getElementById('login-password').value;
+  var errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
   try {
-    const resp = await fetch('/api/auth/login', {
+    var resp = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
@@ -44,7 +45,7 @@ function logout() {
 async function initApp() {
   if (!getToken()) { showLogin(); return; }
   try {
-    const resp = await fetch('/api/auth/me', { headers: authHeaders() });
+    var resp = await fetch('/api/auth/me', { headers: authHeaders() });
     if (!resp.ok) { showLogin(); return; }
     currentUser = await resp.json();
     document.getElementById('login-screen').style.display = 'none';
@@ -55,6 +56,7 @@ async function initApp() {
       document.getElementById('admin-link').style.display = 'inline';
     }
     await loadProjects();
+    await loadTags();
     await loadTasks();
     addAiMessage('Hello ' + currentUser.username + '! I am your AI assistant. Tell me what tasks you need help with.');
   } catch (e) { showLogin(); }
@@ -65,9 +67,17 @@ function showLogin() {
   document.getElementById('app').style.display = 'none';
 }
 
+// Colour helper
+function hexToRgba(hex, alpha) {
+  var r = parseInt(hex.slice(1, 3), 16);
+  var g = parseInt(hex.slice(3, 5), 16);
+  var b = parseInt(hex.slice(5, 7), 16);
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+}
+
 // Projects
 async function loadProjects() {
-  const resp = await fetch('/api/projects', { headers: authHeaders() });
+  var resp = await fetch('/api/projects', { headers: authHeaders() });
   if (!resp.ok) { if (resp.status === 401) showLogin(); return; }
   allProjects = await resp.json();
   renderProjectFilters();
@@ -75,63 +85,120 @@ async function loadProjects() {
 }
 
 function renderProjectFilters() {
-  const container = document.getElementById('project-filters');
+  var container = document.getElementById('project-filters');
   while (container.firstChild) container.removeChild(container.firstChild);
   allProjects.forEach(function(p) {
-    const btn = document.createElement('button');
+    var btn = document.createElement('button');
     btn.className = 'filter-btn';
     btn.textContent = p.name;
-    btn.addEventListener('click', function() { setProjectFilter(p.id, btn); });
+    btn.addEventListener('click', function() { setFilter('project:' + p.id, btn); });
     container.appendChild(btn);
   });
 }
 
 function populateProjectDropdown() {
-  const sel = document.getElementById('mt-project');
+  var sel = document.getElementById('mt-project');
   if (!sel) return;
   while (sel.options.length > 1) sel.remove(1);
   allProjects.forEach(function(p) {
-    const opt = document.createElement('option');
+    var opt = document.createElement('option');
     opt.value = p.id;
     opt.textContent = p.name;
     sel.appendChild(opt);
   });
 }
 
+// Tags
+async function loadTags() {
+  var resp = await fetch('/api/tags', { headers: authHeaders() });
+  if (!resp.ok) return;
+  allTags = await resp.json();
+  renderTagFilters();
+}
+
+function renderTagFilters() {
+  var container = document.getElementById('tag-filters');
+  while (container.firstChild) container.removeChild(container.firstChild);
+  allTags.forEach(function(tag) {
+    var btn = document.createElement('button');
+    btn.className = 'filter-btn';
+    btn.dataset.tagId = tag.id;
+    btn.textContent = tag.name;
+    btn.style.cssText = (
+      'background:' + hexToRgba(tag.color, 0.15) + ';' +
+      'color:' + tag.color + ';' +
+      'border:1px solid ' + hexToRgba(tag.color, 0.3) + ';'
+    );
+    btn.addEventListener('click', function() { setFilter('tag:' + tag.id, btn); });
+    container.appendChild(btn);
+  });
+}
+
 // Tasks
 async function loadTasks() {
-  const resp = await fetch('/api/tasks', { headers: authHeaders() });
+  var resp = await fetch('/api/tasks', { headers: authHeaders() });
   if (!resp.ok) { if (resp.status === 401) showLogin(); return; }
   allTasks = await resp.json();
   renderTasks();
   updateOverdueBadge();
+  loadDashboard();
 }
 
+// Dashboard
+async function loadDashboard() {
+  try {
+    var resp = await fetch('/api/dashboard', { headers: authHeaders() });
+    if (!resp.ok) return;
+    var data = await resp.json();
+    var strip = document.getElementById('dashboard-strip');
+    if (data.overdue === 0 && data.due_today === 0 && data.due_week === 0) {
+      strip.style.display = 'none';
+      return;
+    }
+    strip.style.display = 'block';
+    document.getElementById('stat-overdue-num').textContent = data.overdue;
+    document.getElementById('stat-today-num').textContent = data.due_today;
+    document.getElementById('stat-week-num').textContent = data.due_week;
+    var briefingEl = document.getElementById('dashboard-briefing');
+    if (data.ai_briefing) {
+      document.getElementById('briefing-text').textContent = data.ai_briefing;
+      briefingEl.style.display = 'flex';
+    } else {
+      briefingEl.style.display = 'none';
+    }
+  } catch (e) {}
+}
+
+// Filters
 function setFilter(filter, btn) {
   activeFilter = filter;
   document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
-  btn.classList.add('active');
-  renderTasks();
-}
-
-function setProjectFilter(projectId, btn) {
-  activeFilter = 'project:' + projectId;
-  document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
   renderTasks();
 }
 
 function filteredTasks() {
   var today = new Date().toISOString().split('T')[0];
-  if (activeFilter === 'today') return allTasks.filter(function(t) { return t.due_date === today; });
-  if (activeFilter === 'overdue') return allTasks.filter(function(t) { return t.due_date && t.due_date < today && t.status !== 'done'; });
+  if (activeFilter === 'today') {
+    return allTasks.filter(function(t) { return t.due_date === today; });
+  }
+  if (activeFilter === 'overdue') {
+    return allTasks.filter(function(t) { return t.due_date && t.due_date < today && t.status !== 'done'; });
+  }
   if (activeFilter.indexOf('project:') === 0) {
     var pid = parseInt(activeFilter.split(':')[1]);
     return allTasks.filter(function(t) { return t.project_id === pid; });
   }
+  if (activeFilter.indexOf('tag:') === 0) {
+    var tid = parseInt(activeFilter.split(':')[1]);
+    return allTasks.filter(function(t) {
+      return t.tags && t.tags.some(function(tag) { return tag.id === tid; });
+    });
+  }
   return allTasks;
 }
 
+// Task cards
 function buildTaskCard(t) {
   var today = new Date().toISOString().split('T')[0];
   var card = document.createElement('div');
@@ -140,19 +207,17 @@ function buildTaskCard(t) {
 
   var top = document.createElement('div');
   top.className = 'task-card-top';
-
   var titleEl = document.createElement('div');
   titleEl.className = 'task-title';
   titleEl.textContent = t.title;
-
   var badge = document.createElement('span');
   badge.className = 'priority-badge ' + t.priority;
   badge.textContent = t.priority.toUpperCase();
-
   top.appendChild(titleEl);
   top.appendChild(badge);
   card.appendChild(top);
 
+  // Due date / project meta
   var metaParts = [];
   if (t.project_name) metaParts.push(t.project_name);
   if (t.due_date) metaParts.push('Due ' + t.due_date);
@@ -163,16 +228,44 @@ function buildTaskCard(t) {
     card.appendChild(meta);
   }
 
+  // Tag pills + subtask indicator row
+  var hasInfo = false;
+  var infoRow = document.createElement('div');
+  infoRow.className = 'tag-pills';
+  if (t.tags && t.tags.length > 0) {
+    t.tags.forEach(function(tag) {
+      var pill = document.createElement('span');
+      pill.className = 'tag-pill';
+      pill.textContent = tag.name;
+      pill.style.cssText = (
+        'background:' + hexToRgba(tag.color, 0.2) + ';' +
+        'color:' + tag.color + ';' +
+        'border-color:' + hexToRgba(tag.color, 0.35) + ';'
+      );
+      infoRow.appendChild(pill);
+      hasInfo = true;
+    });
+  }
+  if (t.subtask_count > 0) {
+    var indicator = document.createElement('span');
+    indicator.className = 'subtask-indicator';
+    indicator.textContent = '☑ ' + t.completed_subtasks + '/' + t.subtask_count + ' steps';
+    infoRow.appendChild(indicator);
+    hasInfo = true;
+  }
+  if (hasInfo) card.appendChild(infoRow);
+
+  // Expanded detail
   var detail = document.createElement('div');
   detail.className = 'task-detail' + (expandedTaskId === t.id ? ' open' : '');
   detail.id = 'task-detail-' + t.id;
   detail.addEventListener('click', function(e) { e.stopPropagation(); });
 
+  // Status + delete actions
   var actions = document.createElement('div');
   actions.className = 'task-detail-actions';
-
   var statusSel = document.createElement('select');
-  [['todo','To Do'], ['in-progress','In Progress'], ['done','Done']].forEach(function(pair) {
+  [['todo', 'To Do'], ['in-progress', 'In Progress'], ['done', 'Done']].forEach(function(pair) {
     var opt = document.createElement('option');
     opt.value = pair[0];
     opt.textContent = pair[1];
@@ -180,12 +273,10 @@ function buildTaskCard(t) {
     statusSel.appendChild(opt);
   });
   statusSel.addEventListener('change', function() { updateTaskStatus(t.id, statusSel.value); });
-
   var delBtn = document.createElement('button');
   delBtn.className = 'btn-danger';
   delBtn.textContent = 'Delete';
   delBtn.addEventListener('click', function() { deleteTask(t.id); });
-
   actions.appendChild(statusSel);
   actions.appendChild(delBtn);
   detail.appendChild(actions);
@@ -196,6 +287,48 @@ function buildTaskCard(t) {
     notesEl.textContent = t.notes;
     detail.appendChild(notesEl);
   }
+
+  // Tag picker
+  if (allTags.length > 0) {
+    var tagSection = document.createElement('div');
+    tagSection.className = 'tag-picker-section';
+    var tagLabel = document.createElement('div');
+    tagLabel.className = 'tag-picker-label';
+    tagLabel.textContent = 'Tags';
+    tagSection.appendChild(tagLabel);
+    var tagList = document.createElement('div');
+    tagList.className = 'tag-picker-list';
+    allTags.forEach(function(tag) {
+      var assigned = t.tags && t.tags.some(function(tt) { return tt.id === tag.id; });
+      var item = document.createElement('span');
+      item.className = 'tag-picker-item' + (assigned ? ' assigned' : '');
+      item.textContent = tag.name;
+      item.style.cssText = (
+        'background:' + hexToRgba(tag.color, 0.2) + ';' +
+        'color:' + tag.color + ';' +
+        'border-color:' + hexToRgba(tag.color, 0.35) + ';'
+      );
+      item.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (assigned) {
+          removeTagFromTask(t.id, tag.id);
+        } else {
+          addTagToTask(t.id, tag.id);
+        }
+      });
+      tagList.appendChild(item);
+    });
+    tagSection.appendChild(tagList);
+    detail.appendChild(tagSection);
+  }
+
+  // Subtask checklist
+  var subtaskSection = document.createElement('div');
+  subtaskSection.className = 'subtask-section';
+  if (expandedTaskId === t.id) {
+    loadAndRenderSubtasks(t.id, subtaskSection);
+  }
+  detail.appendChild(subtaskSection);
 
   card.appendChild(detail);
   card.addEventListener('click', function() { toggleTask(t.id); });
@@ -217,10 +350,10 @@ function renderTasks() {
   }
 
   var groups = [
-    { key: 'overdue',     label: 'Overdue',      tasks: tasks.filter(function(t) { return t.due_date && t.due_date < today && t.status !== 'done'; }) },
-    { key: 'in-progress', label: 'In Progress',   tasks: tasks.filter(function(t) { return t.status === 'in-progress'; }) },
-    { key: 'todo',        label: 'To Do',         tasks: tasks.filter(function(t) { return t.status === 'todo' && !(t.due_date && t.due_date < today); }) },
-    { key: 'done',        label: 'Done',          tasks: tasks.filter(function(t) { return t.status === 'done'; }) },
+    { key: 'overdue',     label: 'Overdue',    tasks: tasks.filter(function(t) { return t.due_date && t.due_date < today && t.status !== 'done'; }) },
+    { key: 'in-progress', label: 'In Progress', tasks: tasks.filter(function(t) { return t.status === 'in-progress'; }) },
+    { key: 'todo',        label: 'To Do',       tasks: tasks.filter(function(t) { return t.status === 'todo' && !(t.due_date && t.due_date < today); }) },
+    { key: 'done',        label: 'Done',        tasks: tasks.filter(function(t) { return t.status === 'done'; }) },
   ].filter(function(g) { return g.tasks.length > 0; });
 
   groups.forEach(function(g) {
@@ -260,6 +393,103 @@ function updateOverdueBadge() {
   } else {
     badge.style.display = 'none';
   }
+}
+
+// Subtask checklist
+async function loadAndRenderSubtasks(parentId, container) {
+  try {
+    var resp = await fetch('/api/tasks?parent_id=' + parentId, { headers: authHeaders() });
+    if (!resp.ok) return;
+    var children = await resp.json();
+    while (container.firstChild) container.removeChild(container.firstChild);
+
+    children.forEach(function(child) {
+      var row = document.createElement('div');
+      row.className = 'subtask-row' + (child.status === 'done' ? ' done' : '');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = child.status === 'done';
+      cb.addEventListener('change', function(e) {
+        e.stopPropagation();
+        var newStatus = cb.checked ? 'done' : 'todo';
+        toggleSubtask(child.id, newStatus, parentId, container);
+      });
+      var titleSpan = document.createElement('span');
+      titleSpan.textContent = child.title;
+      row.appendChild(cb);
+      row.appendChild(titleSpan);
+      if (child.subtask_count > 0) {
+        var hint = document.createElement('span');
+        hint.className = 'subtask-nested-hint';
+        hint.textContent = '↳ ' + child.subtask_count + ' steps';
+        row.appendChild(hint);
+      }
+      container.appendChild(row);
+    });
+
+    // "＋ Add step" button
+    var addRow = document.createElement('div');
+    addRow.className = 'add-step-row';
+    addRow.textContent = '+ Add step';
+    addRow.addEventListener('click', function(e) {
+      e.stopPropagation();
+      showAddStepInput(parentId, container, addRow);
+    });
+    container.appendChild(addRow);
+  } catch (e) {}
+}
+
+async function toggleSubtask(id, status, parentId, container) {
+  await fetch('/api/tasks/' + id, {
+    method: 'PUT', headers: authHeaders(), body: JSON.stringify({ status: status }),
+  });
+  await loadAndRenderSubtasks(parentId, container);
+  await loadTasks();
+}
+
+function showAddStepInput(parentId, container, addRowEl) {
+  addRowEl.style.display = 'none';
+  var inputRow = document.createElement('div');
+  inputRow.className = 'subtask-row';
+  var inp = document.createElement('input');
+  inp.type = 'text';
+  inp.placeholder = 'Step title...';
+  inp.style.cssText = 'flex:1;font-size:11px;padding:3px 6px';
+  var cancelSpan = document.createElement('span');
+  cancelSpan.textContent = '✕';
+  cancelSpan.style.cssText = 'color:var(--text-dim);cursor:pointer;font-size:11px;flex-shrink:0';
+  cancelSpan.addEventListener('click', function(e) {
+    e.stopPropagation();
+    inputRow.remove();
+    addRowEl.style.display = '';
+  });
+  inp.addEventListener('keydown', async function(e) {
+    e.stopPropagation();
+    if (e.key === 'Enter' && inp.value.trim()) {
+      await fetch('/api/tasks', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ title: inp.value.trim(), parent_id: parentId }),
+      });
+      await loadAndRenderSubtasks(parentId, container);
+      await loadTasks();
+    }
+    if (e.key === 'Escape') { inputRow.remove(); addRowEl.style.display = ''; }
+  });
+  inputRow.appendChild(inp);
+  inputRow.appendChild(cancelSpan);
+  container.insertBefore(inputRow, addRowEl);
+  inp.focus();
+}
+
+// Tag management on tasks
+async function addTagToTask(taskId, tagId) {
+  await fetch('/api/tasks/' + taskId + '/tags/' + tagId, { method: 'POST', headers: authHeaders() });
+  await loadTasks();
+}
+
+async function removeTagFromTask(taskId, tagId) {
+  await fetch('/api/tasks/' + taskId + '/tags/' + tagId, { method: 'DELETE', headers: authHeaders() });
+  await loadTasks();
 }
 
 // New Task Modal
@@ -392,7 +622,7 @@ async function sendMessage() {
   document.getElementById('send-btn').disabled = false;
 }
 
-// Event wiring — only runs on the main app page (index.html)
+// Event wiring
 document.addEventListener('DOMContentLoaded', function() {
   if (!document.getElementById('login-screen')) return;
 
