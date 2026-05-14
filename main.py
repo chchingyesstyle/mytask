@@ -10,6 +10,7 @@ from routers import projects as projects_router
 from routers import users as users_router
 from routers import chat as chat_router
 from routers import tags as tags_router
+from routers import dashboard as dashboard_router
 
 os.makedirs("data", exist_ok=True)
 os.makedirs("static", exist_ok=True)
@@ -24,6 +25,7 @@ app.include_router(projects_router.router)
 app.include_router(users_router.router)
 app.include_router(chat_router.router)
 app.include_router(tags_router.router)
+app.include_router(dashboard_router.router)
 
 @app.on_event("startup")
 def startup():
