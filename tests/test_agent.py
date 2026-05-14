@@ -58,3 +58,97 @@ def test_build_system_prompt_includes_tasks():
     assert "DB Migrate" in prompt
     assert "todo" in prompt
     assert datetime.utcnow().strftime("%Y-%m-%d") in prompt
+
+def test_create_subtask_tool(db_session):
+    from ai.agent import execute_tool
+    from models import User, Task
+    from auth import hash_password
+    user = User(username="u_sub", password_hash=hash_password("p"), role="user")
+    db_session.add(user)
+    db_session.commit()
+    parent = Task(title="Parent Task", status="todo", priority="high", owner_id=user.id)
+    db_session.add(parent)
+    db_session.commit()
+
+    result = execute_tool("create_subtask", {"parent_id": parent.id, "title": "Step 1"}, db_session, user.id)
+    assert "Step 1" in result
+
+    child = db_session.query(Task).filter(Task.parent_id == parent.id).first()
+    assert child is not None
+    assert child.title == "Step 1"
+    assert child.priority == "high"  # inherits parent priority
+
+def test_create_subtask_tool_parent_not_found(db_session):
+    from ai.agent import execute_tool
+    from models import User
+    from auth import hash_password
+    user = User(username="u_nosub", password_hash=hash_password("p"), role="user")
+    db_session.add(user)
+    db_session.commit()
+    result = execute_tool("create_subtask", {"parent_id": 9999, "title": "Orphan"}, db_session, user.id)
+    assert "not found" in result.lower()
+
+def test_add_tag_to_task_tool(db_session):
+    from ai.agent import execute_tool
+    from models import User, Task, Tag
+    from auth import hash_password
+    user = User(username="u_tag", password_hash=hash_password("p"), role="user")
+    db_session.add(user)
+    db_session.commit()
+    task = Task(title="Tag Me", status="todo", priority="medium", owner_id=user.id)
+    tag = Tag(name="urgent", color="#e74c3c")
+    db_session.add_all([task, tag])
+    db_session.commit()
+
+    result = execute_tool("add_tag_to_task", {"task_id": task.id, "tag_name": "urgent"}, db_session, user.id)
+    assert "urgent" in result.lower()
+
+    db_session.refresh(task)
+    assert any(t.name == "urgent" for t in task.tags)
+
+def test_add_tag_to_task_tool_tag_not_found(db_session):
+    from ai.agent import execute_tool
+    from models import User, Task
+    from auth import hash_password
+    user = User(username="u_tagmiss", password_hash=hash_password("p"), role="user")
+    db_session.add(user)
+    db_session.commit()
+    task = Task(title="No Tag", status="todo", priority="medium", owner_id=user.id)
+    db_session.add(task)
+    db_session.commit()
+    result = execute_tool("add_tag_to_task", {"task_id": task.id, "tag_name": "nonexistent"}, db_session, user.id)
+    assert "not found" in result.lower()
+
+def test_remove_tag_from_task_tool(db_session):
+    from ai.agent import execute_tool
+    from models import User, Task, Tag
+    from auth import hash_password
+    user = User(username="u_rmtag", password_hash=hash_password("p"), role="user")
+    db_session.add(user)
+    db_session.commit()
+    task = Task(title="Remove Tag", status="todo", priority="medium", owner_id=user.id)
+    tag = Tag(name="server", color="#4a90d9")
+    db_session.add_all([task, tag])
+    db_session.commit()
+    task.tags.append(tag)
+    db_session.commit()
+
+    result = execute_tool("remove_tag_from_task", {"task_id": task.id, "tag_name": "server"}, db_session, user.id)
+    assert isinstance(result, str)
+    db_session.refresh(task)
+    assert not any(t.name == "server" for t in task.tags)
+
+def test_remove_tag_silently_succeeds_if_not_assigned(db_session):
+    from ai.agent import execute_tool
+    from models import User, Task, Tag
+    from auth import hash_password
+    user = User(username="u_rmtag2", password_hash=hash_password("p"), role="user")
+    db_session.add(user)
+    db_session.commit()
+    task = Task(title="Clean Task", status="todo", priority="medium", owner_id=user.id)
+    tag = Tag(name="review", color="#2ecc71")
+    db_session.add_all([task, tag])
+    db_session.commit()
+    # tag not assigned to task — should still succeed
+    result = execute_tool("remove_tag_from_task", {"task_id": task.id, "tag_name": "review"}, db_session, user.id)
+    assert isinstance(result, str)
