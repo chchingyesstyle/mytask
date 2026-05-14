@@ -19,11 +19,7 @@ app.include_router(auth_router.router)
 app.include_router(tasks_router.router)
 app.include_router(projects_router.router)
 app.include_router(users_router.router)
-
-# Routers registered in later tasks (Tasks 7–10):
-# app.include_router(projects_router, prefix="/api")
-# app.include_router(users_router, prefix="/api")
-# app.include_router(chat_router, prefix="/api")
+# chat router added in Task 10
 
 @app.on_event("startup")
 def startup():
