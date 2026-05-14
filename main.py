@@ -14,8 +14,10 @@ app = FastAPI(title="MyTask")
 
 app.include_router(auth_router.router)
 
-# Routers registered in later tasks (Tasks 6–10):
-# app.include_router(tasks_router, prefix="/api")
+from routers import tasks as tasks_router
+app.include_router(tasks_router.router)
+
+# Routers registered in later tasks (Tasks 7–10):
 # app.include_router(projects_router, prefix="/api")
 # app.include_router(users_router, prefix="/api")
 # app.include_router(chat_router, prefix="/api")
