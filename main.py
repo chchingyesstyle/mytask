@@ -7,6 +7,7 @@ from routers import auth as auth_router
 from routers import tasks as tasks_router
 from routers import projects as projects_router
 from routers import users as users_router
+from routers import chat as chat_router
 
 os.makedirs("data", exist_ok=True)
 os.makedirs("static", exist_ok=True)
@@ -19,7 +20,7 @@ app.include_router(auth_router.router)
 app.include_router(tasks_router.router)
 app.include_router(projects_router.router)
 app.include_router(users_router.router)
-# chat router added in Task 10
+app.include_router(chat_router.router)
 
 @app.on_event("startup")
 def startup():
