@@ -1,21 +1,28 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
-def _mock_stream(tokens):
-    chunks = []
-    for token in tokens:
+class _AsyncIter:
+    def __init__(self, tokens):
+        self._items = iter(tokens)
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            token = next(self._items)
+        except StopIteration:
+            raise StopAsyncIteration
         chunk = MagicMock()
         chunk.choices = [MagicMock()]
         chunk.choices[0].delta = MagicMock()
         chunk.choices[0].delta.content = token
         chunk.choices[0].delta.tool_calls = None
-        chunks.append(chunk)
-    return iter(chunks)
+        return chunk
 
 def test_chat_streams_tokens(admin_headers):
     client, headers = admin_headers
-    mock_resp = MagicMock()
-    mock_resp.__iter__ = lambda self: _mock_stream(["Hello", " world"])
-    with patch("routers.chat.client.chat.completions.create", return_value=mock_resp):
+    mock_stream = _AsyncIter(["Hello", " world"])
+    with patch("routers.chat.client.chat.completions.create", new=AsyncMock(return_value=mock_stream)):
         resp = client.post(
             "/api/chat",
             json={"message": "hello", "history": []},

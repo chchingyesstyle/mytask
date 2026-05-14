@@ -1,4 +1,5 @@
 import json
+import asyncio
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -16,7 +17,7 @@ class ChatRequest(BaseModel):
     history: list[dict] = []
 
 @router.post("")
-def chat(
+async def chat(
     req: ChatRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
@@ -29,16 +30,16 @@ def chat(
         messages.append(msg)
     messages.append({"role": "user", "content": req.message})
 
-    def generate():
+    async def generate():
         try:
             collected_content = ""
             collected_tool_calls = []
 
-            stream = client.chat.completions.create(
+            stream = await client.chat.completions.create(
                 model=MODEL, messages=messages, tools=TOOLS, stream=True
             )
 
-            for chunk in stream:
+            async for chunk in stream:
                 if not chunk.choices:
                     continue
                 delta = chunk.choices[0].delta
@@ -64,7 +65,9 @@ def chat(
                         args = json.loads(tc["arguments"])
                     except Exception:
                         args = {}
-                    result = execute_tool(tc["name"], args, db, current_user.id)
+                    result = await asyncio.get_event_loop().run_in_executor(
+                        None, execute_tool, tc["name"], args, db, current_user.id
+                    )
                     tool_results.append({"tool_call_id": tc["id"], "name": tc["name"], "result": result})
                 yield "data: {}\n\n".format(json.dumps({"type": "tool_executed", "results": tool_results}))
 
@@ -80,8 +83,8 @@ def chat(
                 for tr in tool_results:
                     messages.append({"role": "tool", "tool_call_id": tr["tool_call_id"], "content": tr["result"]})
 
-                follow_up = client.chat.completions.create(model=MODEL, messages=messages, stream=True)
-                for chunk in follow_up:
+                follow_up = await client.chat.completions.create(model=MODEL, messages=messages, stream=True)
+                async for chunk in follow_up:
                     if chunk.choices and chunk.choices[0].delta.content:
                         content = chunk.choices[0].delta.content
                         yield "data: {}\n\n".format(json.dumps({"type": "token", "content": content}))

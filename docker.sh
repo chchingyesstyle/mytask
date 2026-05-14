@@ -5,7 +5,7 @@ COMPOSE="docker compose"
 case "$1" in
   start)
     $COMPOSE up -d
-    echo "MyTask running — open http://$(hostname -I | awk '{print $1}'):8000"
+    echo "MyTask running — open http://$(hostname -I | awk '{print $1}'):8080"
     ;;
   stop)
     $COMPOSE down
@@ -19,7 +19,7 @@ case "$1" in
     $COMPOSE down
     $COMPOSE build --no-cache
     $COMPOSE up -d
-    echo "MyTask rebuilt — open http://$(hostname -I | awk '{print $1}'):8000"
+    echo "MyTask rebuilt — open http://$(hostname -I | awk '{print $1}'):8080"
     ;;
   status)
     $COMPOSE ps
