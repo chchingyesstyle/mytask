@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import get_db
@@ -52,13 +52,13 @@ def list_tasks(
     query = db.query(models.Task)
     if current_user.role != "admin":
         query = query.filter(models.Task.owner_id == current_user.id)
-    elif user_id:
+    elif user_id is not None:
         query = query.filter(models.Task.owner_id == user_id)
-    if status:
+    if status is not None:
         query = query.filter(models.Task.status == status)
-    if priority:
+    if priority is not None:
         query = query.filter(models.Task.priority == priority)
-    if project_id:
+    if project_id is not None:
         query = query.filter(models.Task.project_id == project_id)
     return [task_to_dict(t) for t in query.all()]
 
@@ -106,3 +106,4 @@ def delete_task(
         raise HTTPException(status_code=403, detail="Not authorized")
     db.delete(task)
     db.commit()
+    return Response(status_code=204)

@@ -47,3 +47,37 @@ def test_filter_by_status(admin_headers):
     resp = client.get("/api/tasks?status=done", headers=headers)
     assert len(resp.json()) == 1
     assert resp.json()[0]["title"] == "Done Task"
+
+def test_filter_by_priority(admin_headers):
+    client, headers = admin_headers
+    client.post("/api/tasks", json={"title": "High Task", "priority": "high"}, headers=headers)
+    client.post("/api/tasks", json={"title": "Low Task", "priority": "low"}, headers=headers)
+    resp = client.get("/api/tasks?priority=high", headers=headers)
+    assert len(resp.json()) == 1
+    assert resp.json()[0]["title"] == "High Task"
+
+def test_regular_user_sees_only_own_tasks(client):
+    from tests.conftest import TestingSessionLocal
+    from auth import hash_password
+    import models
+    db = TestingSessionLocal()
+    db.add(models.User(username="alice", password_hash=hash_password("alicepw"), role="user"))
+    db.add(models.User(username="bob", password_hash=hash_password("bobpw"), role="user"))
+    db.commit()
+    db.close()
+
+    alice_token = client.post("/api/auth/login", json={"username": "alice", "password": "alicepw"}).json()["access_token"]
+    bob_token = client.post("/api/auth/login", json={"username": "bob", "password": "bobpw"}).json()["access_token"]
+    alice_h = {"Authorization": f"Bearer {alice_token}"}
+    bob_h = {"Authorization": f"Bearer {bob_token}"}
+
+    client.post("/api/tasks", json={"title": "Alice Task"}, headers=alice_h)
+    client.post("/api/tasks", json={"title": "Bob Task"}, headers=bob_h)
+
+    alice_tasks = client.get("/api/tasks", headers=alice_h).json()
+    assert len(alice_tasks) == 1
+    assert alice_tasks[0]["title"] == "Alice Task"
+
+    bob_tasks = client.get("/api/tasks", headers=bob_h).json()
+    assert len(bob_tasks) == 1
+    assert bob_tasks[0]["title"] == "Bob Task"

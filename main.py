@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse
 from database import engine, Base
 from seed import seed_admin
 from routers import auth as auth_router
+from routers import tasks as tasks_router
 
 os.makedirs("data", exist_ok=True)
 os.makedirs("static", exist_ok=True)
@@ -13,8 +14,6 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="MyTask")
 
 app.include_router(auth_router.router)
-
-from routers import tasks as tasks_router
 app.include_router(tasks_router.router)
 
 # Routers registered in later tasks (Tasks 7–10):
