@@ -1,1 +1,47 @@
-<!DOCTYPE html><html><body>Admin Loading...</body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyTask Admin</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="admin-app" style="display:none;flex-direction:column;min-height:100vh">
+    <nav class="topnav">
+      <div class="nav-left">
+        <a href="/" class="app-logo">MyTask</a>
+        <span class="workspace-label">Admin Panel</span>
+      </div>
+      <div class="nav-right">
+        <span id="nav-username" class="nav-username"></span>
+        <button id="logout-btn" class="nav-btn">Logout</button>
+      </div>
+    </nav>
+
+    <div class="admin-content">
+      <h2>User Management</h2>
+
+      <div class="create-user-form">
+        <h3>Create New User</h3>
+        <div id="create-error" class="error-msg" style="display:none"></div>
+        <input id="new-username" type="text" placeholder="Username">
+        <input id="new-password" type="password" placeholder="Password">
+        <button id="create-user-btn">Create User</button>
+      </div>
+
+      <table class="user-table">
+        <thead>
+          <tr>
+            <th>ID</th><th>Username</th><th>Role</th><th>Created</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="user-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+  <script src="/static/admin.js"></script>
+</body>
+</html>
