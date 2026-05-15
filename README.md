@@ -11,7 +11,7 @@ A personal task manager with an integrated AI assistant, built on FastAPI, SQLit
 - **AI chat assistant** — Conversational AI that can create tasks, sub-tasks, assign tags, and update status via tool calls
 - **Projects** — Group tasks under named projects
 - **Inline task editing** — ✏ Edit button on expanded task cards to update title, due date, priority, and notes without leaving the page
-- **Inline step editing** — ✏ pencil button on each subtask row to edit title and due date in-place
+- **Inline step editing** — ✏ pencil button on each subtask row to edit title, due date, and notes in-place
 - **Admin panel** — Manage users and tags (scrollable, accessible on any screen height)
 
 ## Tech Stack
@@ -20,7 +20,7 @@ A personal task manager with an integrated AI assistant, built on FastAPI, SQLit
 |-------|-----------|
 | Backend | FastAPI, SQLAlchemy 2, SQLite |
 | Auth | JWT (python-jose), bcrypt |
-| AI | OpenAI-compatible API (NVIDIA NIM / any OpenAI endpoint) |
+| AI | Any OpenAI-compatible API (LiteLLM, NVIDIA NIM, OpenAI, etc.) |
 | Frontend | Vanilla JS, CSS custom properties — no build step |
 | Infra | Docker Compose, Nginx reverse proxy, SSL |
 
@@ -29,7 +29,7 @@ A personal task manager with an integrated AI assistant, built on FastAPI, SQLit
 ### Prerequisites
 
 - Docker + Docker Compose
-- An OpenAI-compatible API key (e.g. NVIDIA NIM)
+- An OpenAI-compatible API endpoint and key (LiteLLM proxy, NVIDIA NIM, OpenAI, etc.)
 
 ### 1. Configure environment
 
@@ -42,11 +42,13 @@ cp .env.example .env
 `.env` variables:
 
 ```
-SECRET_KEY=your-jwt-secret
+JWT_SECRET_KEY=your-jwt-secret
 ADMIN_PASSWORD=your-admin-password
+
+# AI — point at any OpenAI-compatible endpoint
 OPENAI_API_KEY=your-api-key
-OPENAI_BASE_URL=https://integrate.api.nvidia.com/v1
-OPENAI_MODEL=meta/llama-3.3-70b-instruct
+OPENAI_BASE_URL=http://your-litellm-host:4000   # or https://api.openai.com/v1, etc.
+OPENAI_MODEL=gpt-5-mini                          # any model name exposed by the endpoint
 ```
 
 ### 2. Start
@@ -109,6 +111,7 @@ Open `http://localhost:8080`. Default admin login: `admin` / value of `ADMIN_PAS
 | POST | `/api/tags` | admin | Create tag |
 | DELETE | `/api/tags/{id}` | admin | Delete tag |
 | POST | `/api/chat` | user | SSE streaming AI chat |
+| GET | `/api/info` | — | Active model name (used by UI to label the chat panel) |
 
 ## Running Tests
 
