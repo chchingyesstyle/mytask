@@ -97,6 +97,16 @@
 
       <!-- Tasks page -->
       <div id="page-tasks" class="page">
+
+        <!-- View switcher -->
+        <div class="view-switcher" id="view-switcher">
+          <button class="view-tab active" data-view="list">≡ List</button>
+          <button class="view-tab" data-view="board" id="view-tab-board">⊞ Board</button>
+          <button class="view-tab" data-view="calendar">📅 Calendar</button>
+          <button class="view-tab" data-view="timeline">⟶ Timeline</button>
+        </div>
+
+        <!-- Filter bar (shared across all views) -->
         <div class="filter-bar" id="filter-bar">
           <button class="filter-btn active" id="filter-all">All</button>
           <button class="filter-btn" id="filter-today">Today</button>
@@ -104,10 +114,42 @@
           <span id="project-filters"></span>
           <span id="tag-filters"></span>
         </div>
-        <div id="task-list" class="task-list"></div>
-        <div class="task-panel-footer">
-          <button class="new-task-btn" id="new-task-btn">+ New Task</button>
+
+        <!-- List view -->
+        <div id="view-list" class="view-container">
+          <div id="task-list" class="task-list"></div>
+          <div class="task-panel-footer">
+            <button class="new-task-btn" id="new-task-btn">+ New Task</button>
+          </div>
         </div>
+
+        <!-- Board view -->
+        <div id="view-board" class="view-container" style="display:none">
+          <div id="board-columns" class="board-columns"></div>
+        </div>
+
+        <!-- Calendar view -->
+        <div id="view-calendar" class="view-container" style="display:none">
+          <div class="calendar-header">
+            <button id="cal-prev" class="cal-nav-btn">‹</button>
+            <span id="cal-month-label" class="cal-month-label"></span>
+            <button id="cal-next" class="cal-nav-btn">›</button>
+          </div>
+          <div id="calendar-grid" class="calendar-grid"></div>
+        </div>
+
+        <!-- Timeline view -->
+        <div id="view-timeline" class="view-container" style="display:none">
+          <div class="timeline-header">
+            <button id="tl-prev" class="tl-nav-btn">‹ 7d</button>
+            <span id="tl-range-label" class="tl-range-label"></span>
+            <button id="tl-next" class="tl-nav-btn">7d ›</button>
+          </div>
+          <div id="timeline-scroll" class="timeline-scroll">
+            <div id="timeline-rows" class="timeline-rows"></div>
+          </div>
+        </div>
+
       </div>
 
       <!-- Dashboard page -->
