@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Date, ForeignKey, Text, Table
+from sqlalchemy import Column, Integer, String, DateTime, Date, ForeignKey, Text, Table, UniqueConstraint
 from sqlalchemy.orm import relationship, backref
 from database import Base
 
@@ -43,6 +43,7 @@ class Status(Base):
     color      = Column(String(7), nullable=False)
     position   = Column(Integer, nullable=False)
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=True)
+    __table_args__ = (UniqueConstraint("name", "project_id"),)
 
 class Task(Base):
     __tablename__ = "tasks"
@@ -68,4 +69,4 @@ class Task(Base):
         lazy="selectin",
     )
     tags = relationship("Tag", secondary=task_tags, lazy="selectin")
-    status_rel = relationship("Status", foreign_keys=[status_id])
+    status_rel = relationship("Status", foreign_keys=[status_id], lazy="selectin")
