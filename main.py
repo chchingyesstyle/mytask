@@ -19,11 +19,45 @@ Base.metadata.create_all(bind=engine)
 
 # Add columns introduced after initial deployment (create_all won't alter existing tables)
 def _migrate():
+    import sqlalchemy
+    text = sqlalchemy.text
     with engine.connect() as conn:
-        existing = {row[1] for row in conn.execute(__import__('sqlalchemy').text("PRAGMA table_info(tasks)"))}
-        if "parent_id" not in existing:
-            conn.execute(__import__('sqlalchemy').text(
-                "ALTER TABLE tasks ADD COLUMN parent_id INTEGER REFERENCES tasks(id)"
+        task_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(tasks)"))}
+        if "parent_id" not in task_cols:
+            conn.execute(text("ALTER TABLE tasks ADD COLUMN parent_id INTEGER REFERENCES tasks(id)"))
+            conn.commit()
+        if "status_id" not in task_cols:
+            conn.execute(text("ALTER TABLE tasks ADD COLUMN status_id INTEGER REFERENCES statuses(id)"))
+            conn.commit()
+            # Seed defaults before backfill (INSERT OR IGNORE is idempotent)
+            conn.execute(text(
+                "INSERT OR IGNORE INTO statuses (id, name, color, position, project_id) VALUES "
+                "(1, 'Todo', '#6b7280', 0, NULL), "
+                "(2, 'In Progress', '#4a90d9', 1, NULL), "
+                "(3, 'Done', '#2ecc71', 2, NULL)"
+            ))
+            conn.commit()
+            # Backfill existing tasks using old status string
+            conn.execute(text(
+                "UPDATE tasks SET status_id = "
+                "(SELECT id FROM statuses WHERE project_id IS NULL AND name = 'Todo') "
+                "WHERE status = 'todo'"
+            ))
+            conn.execute(text(
+                "UPDATE tasks SET status_id = "
+                "(SELECT id FROM statuses WHERE project_id IS NULL AND name = 'In Progress') "
+                "WHERE status IN ('in-progress', 'in_progress')"
+            ))
+            conn.execute(text(
+                "UPDATE tasks SET status_id = "
+                "(SELECT id FROM statuses WHERE project_id IS NULL AND name = 'Done') "
+                "WHERE status = 'done'"
+            ))
+            # Any remaining tasks get first default status
+            conn.execute(text(
+                "UPDATE tasks SET status_id = "
+                "(SELECT id FROM statuses WHERE project_id IS NULL ORDER BY position LIMIT 1) "
+                "WHERE status_id IS NULL"
             ))
             conn.commit()
 

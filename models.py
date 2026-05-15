@@ -36,6 +36,14 @@ class Tag(Base):
     color = Column(String(7), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class Status(Base):
+    __tablename__ = "statuses"
+    id         = Column(Integer, primary_key=True)
+    name       = Column(String, nullable=False)
+    color      = Column(String(7), nullable=False)
+    position   = Column(Integer, nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=True)
+
 class Task(Base):
     __tablename__ = "tasks"
     id = Column(Integer, primary_key=True, index=True)
@@ -47,6 +55,7 @@ class Task(Base):
     notes = Column(Text, nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     parent_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True)
+    status_id = Column(Integer, ForeignKey("statuses.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     owner = relationship("User", back_populates="tasks")
@@ -59,3 +68,4 @@ class Task(Base):
         lazy="selectin",
     )
     tags = relationship("Tag", secondary=task_tags, lazy="selectin")
+    status_rel = relationship("Status", foreign_keys=[status_id])
