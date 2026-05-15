@@ -15,6 +15,8 @@ let currentView = 'list';
 let currentCalendarMonth = null;  // { year, month } — initialised in Task 8
 let currentTimelineOffset = 0;    // days shifted — used in Task 9
 let allStatuses = [];             // statuses for the active project filter (or default set)
+let expandedProjectId = null;
+let projectStatusMap = {};
 
 // Auth
 function getToken() { return localStorage.getItem('mytask_token'); }
@@ -107,6 +109,7 @@ function navigateTo(page) {
   if (titleEl) titleEl.textContent = titles[page] || page;
   // Load dashboard data when switching to that page
   if (page === 'dashboard') loadDashboard();
+  if (page === 'projects') renderProjectsPage();
 }
 
 function toggleChat() {
@@ -1473,6 +1476,399 @@ async function sendMessage() {
   chatHistory.push({ role: 'assistant', content: aiContent });
   if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
   document.getElementById('send-btn').disabled = false;
+}
+
+// ── Projects page ──────────────────────────────────────────────────────────
+
+async function renderProjectsPage() {
+  await Promise.all(allProjects.map(async function(p) {
+    var resp = await fetch('/api/statuses?project_id=' + p.id, { headers: authHeaders() });
+    if (resp.ok) projectStatusMap[p.id] = await resp.json();
+  }));
+  _renderProjectsList();
+}
+
+function _renderProjectsList() {
+  var page = document.getElementById('page-projects');
+  while (page.firstChild) page.removeChild(page.firstChild);
+
+  var hdr = document.createElement('div');
+  hdr.className = 'proj-page-header';
+  var title = document.createElement('h2');
+  title.textContent = 'Projects';
+  var list = document.createElement('div');
+  list.className = 'proj-list';
+  var newBtn = document.createElement('button');
+  newBtn.textContent = '+ New Project';
+  newBtn.addEventListener('click', function() { showNewProjectForm(list); });
+  hdr.appendChild(title);
+  hdr.appendChild(newBtn);
+  page.appendChild(hdr);
+
+  if (allProjects.length === 0) {
+    var empty = document.createElement('div');
+    empty.className = 'proj-empty';
+    empty.textContent = 'No projects yet. Create one to get started.';
+    list.appendChild(empty);
+  } else {
+    allProjects.forEach(function(p) {
+      list.appendChild(buildProjectCard(p, list));
+    });
+  }
+  page.appendChild(list);
+}
+
+function showNewProjectForm(list) {
+  var existing = document.getElementById('new-proj-form');
+  if (existing) { existing.remove(); return; }
+  var form = document.createElement('div');
+  form.id = 'new-proj-form';
+  form.className = 'proj-new-form';
+  var input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'Project name';
+  var saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Create';
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-secondary';
+  cancelBtn.textContent = 'Cancel';
+  async function doCreate() {
+    var name = input.value.trim();
+    if (!name) return;
+    var resp = await fetch('/api/projects', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify({ name: name }),
+    });
+    if (resp.ok) {
+      var created = await resp.json();
+      projectStatusMap[created.id] = created.statuses;
+      await loadProjects();
+      _renderProjectsList();
+    } else {
+      alert('Failed to create project');
+    }
+  }
+  saveBtn.addEventListener('click', doCreate);
+  cancelBtn.addEventListener('click', function() { form.remove(); });
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doCreate();
+    if (e.key === 'Escape') form.remove();
+  });
+  form.appendChild(input);
+  form.appendChild(saveBtn);
+  form.appendChild(cancelBtn);
+  list.insertBefore(form, list.firstChild);
+  input.focus();
+}
+
+function buildProjectCard(p, list) {
+  var statuses = projectStatusMap[p.id] || [];
+  var taskCount = allTasks.filter(function(t) { return t.project_id === p.id; }).length;
+  var isExpanded = expandedProjectId === p.id;
+
+  var card = document.createElement('div');
+  card.className = 'proj-card';
+
+  var hdr = document.createElement('div');
+  hdr.className = 'proj-card-header';
+  var nameEl = document.createElement('span');
+  nameEl.className = 'proj-card-name';
+  nameEl.textContent = p.name;
+  var countEl = document.createElement('span');
+  countEl.className = 'proj-card-count';
+  countEl.textContent = taskCount + ' task' + (taskCount !== 1 ? 's' : '');
+  var chevron = document.createElement('span');
+  chevron.className = 'proj-card-chevron';
+  chevron.textContent = isExpanded ? '↑' : '↓';
+  var delBtn = document.createElement('button');
+  delBtn.className = 'proj-card-del';
+  delBtn.textContent = '✕';
+  delBtn.title = 'Delete project';
+  delBtn.addEventListener('click', async function(e) {
+    e.stopPropagation();
+    if (!confirm('Delete project "' + p.name + '"? Tasks assigned to it will become unassigned.')) return;
+    var resp = await fetch('/api/projects/' + p.id, { method: 'DELETE', headers: authHeaders() });
+    if (resp.ok) {
+      delete projectStatusMap[p.id];
+      if (expandedProjectId === p.id) expandedProjectId = null;
+      await loadProjects();
+      await loadTasks();
+      _renderProjectsList();
+    } else {
+      alert('Failed to delete project');
+    }
+  });
+  hdr.appendChild(nameEl);
+  hdr.appendChild(countEl);
+  hdr.appendChild(chevron);
+  hdr.appendChild(delBtn);
+  hdr.addEventListener('click', function() {
+    expandedProjectId = isExpanded ? null : p.id;
+    _renderProjectsList();
+  });
+  card.appendChild(hdr);
+
+  var chips = document.createElement('div');
+  chips.className = 'proj-status-chips';
+  statuses.forEach(function(s) {
+    var chip = document.createElement('span');
+    chip.className = 'proj-status-chip';
+    var dot = document.createElement('span');
+    dot.className = 'proj-status-dot';
+    dot.style.background = s.color;
+    chip.appendChild(dot);
+    chip.appendChild(document.createTextNode(s.name));
+    chips.appendChild(chip);
+  });
+  card.appendChild(chips);
+
+  if (isExpanded) {
+    var body = document.createElement('div');
+    body.className = 'proj-card-body';
+
+    var renameRow = document.createElement('div');
+    renameRow.className = 'proj-rename-row';
+    var renameInput = document.createElement('input');
+    renameInput.type = 'text';
+    renameInput.value = p.name;
+    var saveRename = document.createElement('button');
+    saveRename.textContent = 'Save';
+    var cancelRename = document.createElement('button');
+    cancelRename.className = 'btn-secondary';
+    cancelRename.textContent = 'Cancel';
+    async function doRename() {
+      var name = renameInput.value.trim();
+      if (!name) return;
+      var resp = await fetch('/api/projects/' + p.id, {
+        method: 'PUT', headers: authHeaders(),
+        body: JSON.stringify({ name: name }),
+      });
+      if (resp.ok) { await loadProjects(); _renderProjectsList(); }
+      else { alert('Failed to rename project'); }
+    }
+    saveRename.addEventListener('click', doRename);
+    cancelRename.addEventListener('click', function() { expandedProjectId = null; _renderProjectsList(); });
+    renameInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') doRename();
+      if (e.key === 'Escape') { expandedProjectId = null; _renderProjectsList(); }
+    });
+    renameRow.appendChild(renameInput);
+    renameRow.appendChild(saveRename);
+    renameRow.appendChild(cancelRename);
+    body.appendChild(renameRow);
+
+    var statusLabel = document.createElement('div');
+    statusLabel.className = 'proj-section-label';
+    statusLabel.textContent = 'Statuses';
+    body.appendChild(statusLabel);
+
+    var statusList = document.createElement('div');
+    statusList.className = 'proj-status-list';
+    statuses.forEach(function(s) {
+      statusList.appendChild(buildStatusRow(s, statuses, p.id));
+    });
+    body.appendChild(statusList);
+
+    var addStatusBtn = document.createElement('button');
+    addStatusBtn.className = 'proj-add-status-btn';
+    addStatusBtn.textContent = '+ Add Status';
+    addStatusBtn.addEventListener('click', function() {
+      var existing = statusList.querySelector('.proj-add-status-form');
+      if (existing) { existing.remove(); return; }
+      buildAddStatusForm(p.id, statusList);
+    });
+    body.appendChild(addStatusBtn);
+    card.appendChild(body);
+  }
+
+  return card;
+}
+
+function buildStatusRow(s, allProjectStatuses, projectId) {
+  var row = document.createElement('div');
+  row.className = 'proj-status-row';
+  var swatch = document.createElement('span');
+  swatch.className = 'proj-status-swatch';
+  swatch.style.background = s.color;
+  var nameEl = document.createElement('span');
+  nameEl.className = 'proj-status-name';
+  nameEl.textContent = s.name;
+  var controls = document.createElement('span');
+  controls.className = 'proj-status-controls';
+
+  var editBtn = document.createElement('button');
+  editBtn.className = 'proj-status-btn';
+  editBtn.textContent = 'Edit';
+  editBtn.addEventListener('click', function() {
+    var editRow = buildStatusEditRow(s, projectId, row);
+    row.replaceWith(editRow);
+    editRow.querySelector('input[type="text"]').focus();
+  });
+
+  var idx = allProjectStatuses.findIndex(function(x) { return x.id === s.id; });
+
+  var upBtn = document.createElement('button');
+  upBtn.className = 'proj-status-btn';
+  upBtn.textContent = '↑';
+  upBtn.disabled = idx === 0;
+  upBtn.addEventListener('click', async function() {
+    var ids = allProjectStatuses.map(function(x) { return x.id; });
+    ids.splice(idx - 1, 0, ids.splice(idx, 1)[0]);
+    var resp = await fetch('/api/statuses/reorder', {
+      method: 'PUT', headers: authHeaders(),
+      body: JSON.stringify({ ids: ids }),
+    });
+    if (resp.ok) {
+      var r2 = await fetch('/api/statuses?project_id=' + projectId, { headers: authHeaders() });
+      if (r2.ok) projectStatusMap[projectId] = await r2.json();
+      _renderProjectsList();
+    }
+  });
+
+  var downBtn = document.createElement('button');
+  downBtn.className = 'proj-status-btn';
+  downBtn.textContent = '↓';
+  downBtn.disabled = idx === allProjectStatuses.length - 1;
+  downBtn.addEventListener('click', async function() {
+    var ids = allProjectStatuses.map(function(x) { return x.id; });
+    ids.splice(idx + 1, 0, ids.splice(idx, 1)[0]);
+    var resp = await fetch('/api/statuses/reorder', {
+      method: 'PUT', headers: authHeaders(),
+      body: JSON.stringify({ ids: ids }),
+    });
+    if (resp.ok) {
+      var r2 = await fetch('/api/statuses?project_id=' + projectId, { headers: authHeaders() });
+      if (r2.ok) projectStatusMap[projectId] = await r2.json();
+      _renderProjectsList();
+    }
+  });
+
+  var delBtn = document.createElement('button');
+  delBtn.className = 'proj-status-btn';
+  delBtn.textContent = '✕';
+  delBtn.disabled = allProjectStatuses.length <= 1;
+  delBtn.title = allProjectStatuses.length <= 1 ? 'Cannot delete the last status' : 'Delete status';
+  delBtn.addEventListener('click', async function() {
+    if (allProjectStatuses.length <= 1) return;
+    if (!confirm('Delete status "' + s.name + '"? Tasks will be moved to the next remaining status.')) return;
+    var resp = await fetch('/api/statuses/' + s.id, { method: 'DELETE', headers: authHeaders() });
+    if (resp.ok) {
+      var r2 = await fetch('/api/statuses?project_id=' + projectId, { headers: authHeaders() });
+      if (r2.ok) projectStatusMap[projectId] = await r2.json();
+      _renderProjectsList();
+    } else {
+      var err = await resp.json().catch(function() { return {}; });
+      alert(err.detail || 'Failed to delete status');
+    }
+  });
+
+  controls.appendChild(editBtn);
+  controls.appendChild(upBtn);
+  controls.appendChild(downBtn);
+  controls.appendChild(delBtn);
+  row.appendChild(swatch);
+  row.appendChild(nameEl);
+  row.appendChild(controls);
+  return row;
+}
+
+function buildStatusEditRow(s, projectId, originalRow) {
+  var row = document.createElement('div');
+  row.className = 'proj-status-row proj-status-edit-row';
+  var swatch = document.createElement('span');
+  swatch.className = 'proj-status-swatch';
+  swatch.style.background = s.color;
+  var nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.value = s.name;
+  nameInput.style.cssText = 'font-size:12px;padding:3px 8px;width:120px;';
+  var colorInput = document.createElement('input');
+  colorInput.type = 'color';
+  colorInput.value = s.color;
+  colorInput.style.cssText = 'width:28px;height:24px;padding:1px;cursor:pointer;border:none;';
+  colorInput.addEventListener('input', function() { swatch.style.background = colorInput.value; });
+  var saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Save';
+  saveBtn.style.cssText = 'font-size:11px;padding:3px 10px;';
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-secondary';
+  cancelBtn.textContent = '✕';
+  cancelBtn.style.cssText = 'font-size:11px;padding:3px 7px;';
+  async function doSave() {
+    var name = nameInput.value.trim();
+    if (!name) return;
+    var resp = await fetch('/api/statuses/' + s.id, {
+      method: 'PUT', headers: authHeaders(),
+      body: JSON.stringify({ name: name, color: colorInput.value }),
+    });
+    if (resp.ok) {
+      var r2 = await fetch('/api/statuses?project_id=' + projectId, { headers: authHeaders() });
+      if (r2.ok) projectStatusMap[projectId] = await r2.json();
+      _renderProjectsList();
+    } else {
+      alert('Failed to update status');
+    }
+  }
+  saveBtn.addEventListener('click', doSave);
+  cancelBtn.addEventListener('click', function() { row.replaceWith(originalRow); });
+  nameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doSave();
+    if (e.key === 'Escape') row.replaceWith(originalRow);
+  });
+  row.appendChild(swatch);
+  row.appendChild(nameInput);
+  row.appendChild(colorInput);
+  row.appendChild(saveBtn);
+  row.appendChild(cancelBtn);
+  return row;
+}
+
+function buildAddStatusForm(projectId, statusList) {
+  var form = document.createElement('div');
+  form.className = 'proj-add-status-form';
+  var nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.placeholder = 'Status name';
+  nameInput.style.cssText = 'font-size:12px;padding:3px 8px;width:120px;';
+  var colorInput = document.createElement('input');
+  colorInput.type = 'color';
+  colorInput.value = '#4a90d9';
+  colorInput.style.cssText = 'width:28px;height:24px;padding:1px;cursor:pointer;border:none;';
+  var saveBtn = document.createElement('button');
+  saveBtn.textContent = '✓';
+  saveBtn.style.cssText = 'font-size:11px;padding:3px 8px;';
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-secondary';
+  cancelBtn.textContent = '✕';
+  cancelBtn.style.cssText = 'font-size:11px;padding:3px 7px;';
+  async function doCreate() {
+    var name = nameInput.value.trim();
+    if (!name) return;
+    var resp = await fetch('/api/statuses', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify({ name: name, color: colorInput.value, project_id: projectId }),
+    });
+    if (resp.ok) {
+      var r2 = await fetch('/api/statuses?project_id=' + projectId, { headers: authHeaders() });
+      if (r2.ok) projectStatusMap[projectId] = await r2.json();
+      _renderProjectsList();
+    } else {
+      var err = await resp.json().catch(function() { return {}; });
+      alert(err.detail || 'Failed to create status');
+    }
+  }
+  saveBtn.addEventListener('click', doCreate);
+  cancelBtn.addEventListener('click', function() { form.remove(); });
+  nameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doCreate();
+    if (e.key === 'Escape') form.remove();
+  });
+  form.appendChild(nameInput);
+  form.appendChild(colorInput);
+  form.appendChild(saveBtn);
+  form.appendChild(cancelBtn);
+  statusList.appendChild(form);
+  nameInput.focus();
 }
 
 // Event wiring

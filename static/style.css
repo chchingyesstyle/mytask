@@ -554,3 +554,38 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
   color: var(--text-dim); font-size: 10px; padding-top: 4px;
 }
 .tl-empty { color: var(--text-dim); font-size: 12px; padding: 24px; text-align: center; }
+
+/* ── Projects page ── */
+.proj-list { padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; }
+.proj-page-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.proj-page-header h2 { font-size: 15px; font-weight: 600; }
+.proj-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r); }
+.proj-card-header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; cursor: pointer; user-select: none; border-radius: var(--r); }
+.proj-card-header:hover { background: rgba(255,255,255,.03); }
+.proj-card-name { font-weight: 600; font-size: 13px; flex: 1; }
+.proj-card-count { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.proj-card-chevron { font-size: 11px; color: var(--text-dim); width: 14px; text-align: center; }
+.proj-card-del { background: none; border: none; color: var(--text-dim); font-size: 13px; padding: 2px 6px; line-height: 1; cursor: pointer; border-radius: var(--r); }
+.proj-card-del:hover { color: var(--danger); opacity: 1; }
+.proj-status-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 10px; }
+.proj-status-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-dim); }
+.proj-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.proj-card-body { border-top: 1px solid var(--border); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.proj-rename-row { display: flex; align-items: center; gap: 8px; }
+.proj-rename-row input { flex: 1; max-width: 280px; font-size: 13px; padding: 6px 10px; }
+.proj-section-label { font-size: 11px; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.proj-status-list { display: flex; flex-direction: column; }
+.proj-status-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+.proj-status-row:last-child { border-bottom: none; }
+.proj-status-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+.proj-status-name { flex: 1; font-size: 12px; }
+.proj-status-controls { display: flex; gap: 4px; }
+.proj-status-btn { background: none; border: 1px solid var(--border); color: var(--text-dim); font-size: 11px; padding: 2px 7px; line-height: 1.4; cursor: pointer; border-radius: var(--r); }
+.proj-status-btn:hover { color: var(--text); opacity: 1; }
+.proj-status-btn:disabled { opacity: .25; cursor: not-allowed; }
+.proj-add-status-btn { background: none; border: none; color: var(--text-dim); font-size: 12px; padding: 6px 0 2px; cursor: pointer; text-align: left; }
+.proj-add-status-btn:hover { color: var(--accent); opacity: 1; }
+.proj-status-edit-row, .proj-add-status-form { display: flex; align-items: center; gap: 6px; padding: 5px 0; }
+.proj-new-form { background: var(--bg-panel); border: 1px dashed var(--border); border-radius: var(--r); padding: 10px 14px; display: flex; align-items: center; gap: 8px; }
+.proj-new-form input { font-size: 13px; padding: 6px 10px; }
+.proj-empty { color: var(--text-dim); font-size: 13px; text-align: center; padding: 40px 16px; }
