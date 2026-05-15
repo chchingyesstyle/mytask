@@ -700,7 +700,6 @@ async function saveStepEdit(stepId, title, dueDate, parentId, container, editRow
   editingStepId = null;
   editRow.remove();
   originalRow.style.display = '';
-  await loadAndRenderSubtasks(parentId, container);
   await loadTasks();
 }
 
