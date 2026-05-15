@@ -1,4 +1,4 @@
-# MyTask — Personal AI Task Manager
+# MyTask — Personal AI Task Manager `v1.0`
 
 A personal task manager with an integrated AI assistant, built on FastAPI, SQLite, and vanilla JavaScript.
 

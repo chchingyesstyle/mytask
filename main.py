@@ -29,7 +29,7 @@ def _migrate():
 
 _migrate()
 
-app = FastAPI(title="MyTask")
+app = FastAPI(title="MyTask", version="1.0.0")
 
 app.include_router(auth_router.router)
 app.include_router(tasks_router.router)
