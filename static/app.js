@@ -11,6 +11,10 @@ let editingStepId = null;
 let currentPage = 'tasks';
 let chatOpen = false;
 let drawerOpen = false;
+let currentView = 'list';
+let currentCalendarMonth = null;  // { year, month } — initialised in Task 8
+let currentTimelineOffset = 0;    // days shifted — used in Task 9
+let allStatuses = [];             // statuses for the active project filter (or default set)
 
 // Auth
 function getToken() { return localStorage.getItem('mytask_token'); }
@@ -140,6 +144,15 @@ async function loadProjects() {
   allProjects = await resp.json();
   renderProjectFilters();
   populateProjectDropdown();
+}
+
+// Statuses
+async function loadStatuses(projectId) {
+  var url = '/api/statuses';
+  if (projectId !== undefined && projectId !== null) url += '?project_id=' + projectId;
+  var resp = await fetch(url, { headers: authHeaders() });
+  if (!resp.ok) return;
+  allStatuses = await resp.json();
 }
 
 function renderProjectFilters() {
@@ -275,6 +288,7 @@ async function loadTasks() {
   var resp = await fetch('/api/tasks', { headers: authHeaders() });
   if (!resp.ok) { if (resp.status === 401) showLogin(); return; }
   allTasks = await resp.json();
+  await loadStatuses();  // load default statuses
   renderTasks();
   updateOverdueBadge();
   loadDashboard();
@@ -310,7 +324,22 @@ function setFilter(filter, btn) {
   activeFilter = filter;
   document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
   if (btn) btn.classList.add('active');
-  renderTasks();
+  // Reload statuses for the selected project (or defaults if "All")
+  if (filter.indexOf('project:') === 0) {
+    var pid = parseInt(filter.split(':')[1]);
+    loadStatuses(pid).then(function() { renderCurrentView(); });
+  } else {
+    loadStatuses().then(function() { renderCurrentView(); });
+  }
+  // Update board tab disabled state
+  var boardTab = document.getElementById('view-tab-board');
+  if (boardTab) {
+    var isProjectFilter = filter.indexOf('project:') === 0;
+    boardTab.disabled = !isProjectFilter;
+    boardTab.title = isProjectFilter ? '' : 'Select a project to use Board view';
+    // If board is active and we lose project filter, switch back to list
+    if (!isProjectFilter && currentView === 'board') switchView('list');
+  }
 }
 
 function filteredTasks() {
@@ -319,7 +348,9 @@ function filteredTasks() {
     return allTasks.filter(function(t) { return t.due_date === today; });
   }
   if (activeFilter === 'overdue') {
-    return allTasks.filter(function(t) { return t.due_date && t.due_date < today && t.status !== 'done'; });
+    return allTasks.filter(function(t) {
+      return t.due_date && t.due_date < today && t.status_name !== 'Done';
+    });
   }
   if (activeFilter.indexOf('project:') === 0) {
     var pid = parseInt(activeFilter.split(':')[1]);
@@ -338,7 +369,7 @@ function filteredTasks() {
 function buildTaskCard(t) {
   var today = new Date().toISOString().split('T')[0];
   var card = document.createElement('div');
-  card.className = 'task-card priority-' + t.priority + ' status-' + t.status;
+  card.className = 'task-card priority-' + t.priority + (t.status_name === 'Done' ? ' status-done' : '');
   card.id = 'task-card-' + t.id;
 
   var top = document.createElement('div');
@@ -401,14 +432,16 @@ function buildTaskCard(t) {
   var actions = document.createElement('div');
   actions.className = 'task-detail-actions';
   var statusSel = document.createElement('select');
-  [['todo', 'To Do'], ['in-progress', 'In Progress'], ['done', 'Done']].forEach(function(pair) {
+  allStatuses.forEach(function(s) {
     var opt = document.createElement('option');
-    opt.value = pair[0];
-    opt.textContent = pair[1];
-    if (t.status === pair[0]) opt.selected = true;
+    opt.value = s.id;
+    opt.textContent = s.name;
+    if (t.status_id === s.id) opt.selected = true;
     statusSel.appendChild(opt);
   });
-  statusSel.addEventListener('change', function() { updateTaskStatus(t.id, statusSel.value); });
+  statusSel.addEventListener('change', function() {
+    updateTaskStatus(t.id, parseInt(statusSel.value));
+  });
   var delBtn = document.createElement('button');
   delBtn.className = 'btn-danger';
   delBtn.textContent = 'Delete';
@@ -503,20 +536,218 @@ function renderTasks() {
     return;
   }
 
-  var groups = [
-    { key: 'overdue',     label: 'Overdue',    tasks: tasks.filter(function(t) { return t.due_date && t.due_date < today && t.status !== 'done'; }) },
-    { key: 'in-progress', label: 'In Progress', tasks: tasks.filter(function(t) { return t.status === 'in-progress'; }) },
-    { key: 'todo',        label: 'To Do',       tasks: tasks.filter(function(t) { return t.status === 'todo' && !(t.due_date && t.due_date < today); }) },
-    { key: 'done',        label: 'Done',        tasks: tasks.filter(function(t) { return t.status === 'done'; }) },
-  ].filter(function(g) { return g.tasks.length > 0; });
-
-  groups.forEach(function(g) {
-    var label = document.createElement('div');
-    label.className = 'task-group-label ' + g.key;
-    label.textContent = g.label.toUpperCase();
-    container.appendChild(label);
-    g.tasks.forEach(function(t) { container.appendChild(buildTaskCard(t)); });
+  var overdueGroup = tasks.filter(function(t) {
+    return t.due_date && t.due_date < today && t.status_name !== 'Done';
   });
+  var remaining = tasks.filter(function(t) {
+    return !(t.due_date && t.due_date < today && t.status_name !== 'Done');
+  });
+
+  if (overdueGroup.length > 0) {
+    var label = document.createElement('div');
+    label.className = 'task-group-label overdue';
+    label.textContent = 'OVERDUE';
+    container.appendChild(label);
+    overdueGroup.forEach(function(t) { container.appendChild(buildTaskCard(t)); });
+  }
+
+  // Group remaining tasks by status name
+  var statusOrder = allStatuses.length > 0
+    ? allStatuses.map(function(s) { return s.name; })
+    : ['Todo', 'In Progress', 'Done'];
+
+  statusOrder.forEach(function(sName) {
+    var group = remaining.filter(function(t) { return t.status_name === sName; });
+    if (group.length === 0) return;
+    var label = document.createElement('div');
+    var cssKey = sName === 'Done' ? 'done' : sName === 'In Progress' ? 'in-progress' : 'todo';
+    label.className = 'task-group-label ' + cssKey;
+    label.textContent = sName.toUpperCase();
+    container.appendChild(label);
+    group.forEach(function(t) { container.appendChild(buildTaskCard(t)); });
+  });
+
+  // Tasks whose status_name doesn't match any known status
+  var knownNames = new Set(statusOrder);
+  var unknown = remaining.filter(function(t) { return !knownNames.has(t.status_name); });
+  unknown.forEach(function(t) { container.appendChild(buildTaskCard(t)); });
+}
+
+// View switching
+function renderCurrentView() {
+  if (currentView === 'list') renderTasks();
+  else if (currentView === 'board') renderBoard();
+  else if (currentView === 'calendar') renderCalendar();
+  else if (currentView === 'timeline') renderTimeline();
+}
+
+function switchView(view) {
+  currentView = view;
+  ['list', 'board', 'calendar', 'timeline'].forEach(function(v) {
+    var el = document.getElementById('view-' + v);
+    if (el) el.style.display = v === view ? 'flex' : 'none';
+  });
+  document.querySelectorAll('.view-tab').forEach(function(tab) {
+    tab.classList.toggle('active', tab.dataset.view === view);
+  });
+  renderCurrentView();
+}
+
+function renderCalendar() { /* stub — implemented in Task 8 */ }
+function renderTimeline() { /* stub — implemented in Task 9 */ }
+
+function renderBoard() {
+  var container = document.getElementById('board-columns');
+  if (!container) return;
+  while (container.firstChild) container.removeChild(container.firstChild);
+
+  // Board requires a project to be selected
+  if (activeFilter.indexOf('project:') !== 0) {
+    var msg = document.createElement('div');
+    msg.className = 'board-disabled-msg';
+    msg.textContent = 'Select a project to use Board view';
+    container.appendChild(msg);
+    return;
+  }
+
+  var tasks = filteredTasks();
+
+  allStatuses.forEach(function(status) {
+    var col = document.createElement('div');
+    col.className = 'board-column';
+    col.dataset.statusId = status.id;
+
+    // Column header
+    var header = document.createElement('div');
+    header.className = 'board-column-header';
+    var dot = document.createElement('span');
+    dot.className = 'board-column-dot';
+    dot.style.background = status.color;
+    var nameEl = document.createElement('span');
+    nameEl.className = 'board-column-name';
+    nameEl.textContent = status.name;
+    var countEl = document.createElement('span');
+    countEl.className = 'board-column-count';
+    var colTasks = tasks.filter(function(t) { return t.status_id === status.id; });
+    countEl.textContent = colTasks.length;
+    header.appendChild(dot);
+    header.appendChild(nameEl);
+    header.appendChild(countEl);
+    col.appendChild(header);
+
+    // Cards area
+    var cards = document.createElement('div');
+    cards.className = 'board-column-cards';
+    colTasks.forEach(function(t) { cards.appendChild(buildBoardCard(t)); });
+    col.appendChild(cards);
+
+    // Drag-and-drop on column
+    col.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      col.classList.add('drag-over');
+    });
+    col.addEventListener('dragleave', function() { col.classList.remove('drag-over'); });
+    col.addEventListener('drop', function(e) {
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      var taskId = parseInt(e.dataTransfer.getData('text/plain'));
+      if (taskId) {
+        fetch('/api/tasks/' + taskId, {
+          method: 'PUT', headers: authHeaders(),
+          body: JSON.stringify({ status_id: status.id }),
+        }).then(function() { loadTasks(); });
+      }
+    });
+
+    // "+ Add card" footer
+    var addBtn = document.createElement('button');
+    addBtn.className = 'board-add-card-btn';
+    addBtn.textContent = '+ Add card';
+    addBtn.addEventListener('click', function() {
+      openNewTaskModal(null, null, status.id);
+    });
+    col.appendChild(addBtn);
+
+    container.appendChild(col);
+  });
+
+  // "+ Add status" column
+  var addCol = document.createElement('div');
+  addCol.className = 'board-add-column';
+  var addColBtn = document.createElement('button');
+  addColBtn.className = 'board-add-column-btn';
+  addColBtn.textContent = '+ Add status';
+  addColBtn.addEventListener('click', function() { showAddStatusForm(addCol, addColBtn); });
+  addCol.appendChild(addColBtn);
+  container.appendChild(addCol);
+}
+
+function buildBoardCard(t) {
+  var card = document.createElement('div');
+  card.className = 'board-card priority-' + t.priority;
+  card.draggable = true;
+  card.dataset.taskId = t.id;
+  card.addEventListener('dragstart', function(e) {
+    e.dataTransfer.setData('text/plain', t.id);
+    card.classList.add('dragging');
+  });
+  card.addEventListener('dragend', function() { card.classList.remove('dragging'); });
+  var title = document.createElement('div');
+  title.className = 'board-card-title';
+  title.textContent = t.title;
+  card.appendChild(title);
+  var metaParts = [];
+  if (t.due_date) metaParts.push('Due ' + t.due_date);
+  if (t.tags && t.tags.length > 0) metaParts.push(t.tags.map(function(tg) { return tg.name; }).join(', '));
+  if (metaParts.length) {
+    var meta = document.createElement('div');
+    meta.className = 'board-card-meta';
+    meta.textContent = metaParts.join(' · ');
+    card.appendChild(meta);
+  }
+  return card;
+}
+
+function showAddStatusForm(container, triggerBtn) {
+  var existing = document.getElementById('add-status-form');
+  if (existing) { existing.remove(); triggerBtn.style.display = 'block'; return; }
+  triggerBtn.style.display = 'none';
+  var form = document.createElement('div');
+  form.id = 'add-status-form';
+  form.style.cssText = 'display:flex;flex-direction:column;gap:6px';
+  var nameInp = document.createElement('input');
+  nameInp.type = 'text'; nameInp.placeholder = 'Status name';
+  nameInp.style.cssText = 'font-size:11px;padding:4px 8px';
+  var colorInp = document.createElement('input');
+  colorInp.type = 'color'; colorInp.value = '#4a90d9';
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:4px';
+  var saveBtn = document.createElement('button');
+  saveBtn.textContent = '✓'; saveBtn.style.cssText = 'font-size:10px;padding:2px 8px';
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-secondary'; cancelBtn.textContent = '✕';
+  cancelBtn.style.cssText = 'font-size:10px;padding:2px 8px';
+  row.appendChild(colorInp); row.appendChild(saveBtn); row.appendChild(cancelBtn);
+  async function doCreate() {
+    var name = nameInp.value.trim();
+    if (!name) return;
+    var pid = parseInt(activeFilter.split(':')[1]);
+    await fetch('/api/statuses', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify({ name: name, color: colorInp.value, project_id: pid }),
+    });
+    await loadStatuses(pid);
+    await loadTasks();
+  }
+  saveBtn.addEventListener('click', doCreate);
+  cancelBtn.addEventListener('click', function() { form.remove(); triggerBtn.style.display = 'block'; });
+  nameInp.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doCreate();
+    if (e.key === 'Escape') { form.remove(); triggerBtn.style.display = 'block'; }
+  });
+  form.appendChild(nameInp); form.appendChild(row);
+  container.insertBefore(form, triggerBtn);
+  nameInp.focus();
 }
 
 function toggleTask(id) {
@@ -526,9 +757,10 @@ function toggleTask(id) {
   renderTasks();
 }
 
-async function updateTaskStatus(id, status) {
+async function updateTaskStatus(id, statusId) {
   await fetch('/api/tasks/' + id, {
-    method: 'PUT', headers: authHeaders(), body: JSON.stringify({ status: status }),
+    method: 'PUT', headers: authHeaders(),
+    body: JSON.stringify({ status_id: statusId }),
   });
   await loadTasks();
 }
@@ -648,7 +880,7 @@ async function saveTaskEdit(taskId, data) {
 
 function updateOverdueBadge() {
   var today = new Date().toISOString().split('T')[0];
-  var count = allTasks.filter(function(t) { return t.due_date && t.due_date < today && t.status !== 'done'; }).length;
+  var count = allTasks.filter(function(t) { return t.due_date && t.due_date < today && t.status_name !== 'Done'; }).length;
   var badge = document.getElementById('overdue-badge');
   if (count > 0) {
     badge.textContent = count + ' overdue';
@@ -862,8 +1094,14 @@ async function removeTagFromTask(taskId, tagId) {
 }
 
 // New Task Modal
-function showNewTaskForm() {
-  document.getElementById('task-modal').style.display = 'flex';
+function openNewTaskModal(dueDate, projectId, statusId) {
+  var modal = document.getElementById('task-modal');
+  var dueDateInp = document.getElementById('mt-due');
+  var projectSel = document.getElementById('mt-project');
+  if (dueDate) dueDateInp.value = dueDate;
+  if (projectId) projectSel.value = projectId;
+  modal.dataset.preselectStatusId = statusId || '';
+  modal.style.display = 'flex';
   document.getElementById('mt-title').focus();
 }
 
@@ -877,13 +1115,16 @@ function closeModal() {
 async function createTask() {
   var title = document.getElementById('mt-title').value.trim();
   if (!title) { alert('Title is required.'); return; }
+  var preselectStatusId = document.getElementById('task-modal').dataset.preselectStatusId;
   var body = {
     title: title,
     priority: document.getElementById('mt-priority').value,
     due_date: document.getElementById('mt-due').value || null,
     project_id: parseInt(document.getElementById('mt-project').value) || null,
     notes: document.getElementById('mt-notes').value.trim() || null,
+    tag_ids: [],
   };
+  if (preselectStatusId) body.status_id = parseInt(preselectStatusId);
   var createResp = await fetch('/api/tasks', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
   if (!createResp.ok) {
     var errData = await createResp.json();
@@ -1016,7 +1257,9 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.drawer-item[data-page]').forEach(function(el) {
     el.addEventListener('click', function() { navigateTo(el.dataset.page); if (drawerOpen) toggleDrawer(); });
   });
-  document.getElementById('new-task-btn').addEventListener('click', showNewTaskForm);
+  document.getElementById('new-task-btn').addEventListener('click', function() {
+    openNewTaskModal(null, null, null);
+  });
   document.getElementById('modal-create-btn').addEventListener('click', createTask);
   document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
   document.getElementById('task-modal').addEventListener('click', function(e) {
@@ -1025,4 +1268,11 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('filter-all').addEventListener('click', function() { setFilter('all', this); });
   document.getElementById('filter-today').addEventListener('click', function() { setFilter('today', this); });
   document.getElementById('filter-overdue').addEventListener('click', function() { setFilter('overdue', this); });
+  // View tab listeners
+  document.querySelectorAll('.view-tab[data-view]').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      if (tab.disabled) return;
+      switchView(tab.dataset.view);
+    });
+  });
 });
