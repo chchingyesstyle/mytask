@@ -5,6 +5,10 @@ def test_create_project(admin_headers):
     data = resp.json()
     assert data["name"] == "Server Infra"
     assert len(data["statuses"]) == 3
+    assert data["statuses"][0]["name"] == "Todo"
+    assert data["statuses"][1]["name"] == "In Progress"
+    assert data["statuses"][2]["name"] == "Done"
+    assert all(s["project_id"] == data["id"] for s in data["statuses"])
 
 def test_list_projects_empty(admin_headers):
     client, headers = admin_headers

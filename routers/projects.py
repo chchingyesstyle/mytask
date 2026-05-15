@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from auth import get_current_user
 import models
+from routers.statuses import _status_to_dict
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -38,7 +39,7 @@ def create_project(req: ProjectCreate, db: Session = Depends(get_db), current_us
         "id": project.id,
         "name": project.name,
         "owner_id": project.owner_id,
-        "statuses": [{"id": s.id, "name": s.name, "color": s.color, "position": s.position} for s in project.statuses],
+        "statuses": [_status_to_dict(s) for s in project.statuses],
     }
 
 @router.delete("/{project_id}", status_code=204)
