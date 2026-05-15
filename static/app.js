@@ -388,6 +388,7 @@ function buildTaskCard(t) {
   // Due date / project meta
   var metaParts = [];
   if (t.project_name) metaParts.push(t.project_name);
+  if (t.start_date) metaParts.push('Start ' + t.start_date);
   if (t.due_date) metaParts.push('Due ' + t.due_date);
   if (metaParts.length) {
     var meta = document.createElement('div');
@@ -926,6 +927,7 @@ function buildBoardCard(t) {
   title.textContent = t.title;
   card.appendChild(title);
   var metaParts = [];
+  if (t.start_date) metaParts.push('Start ' + t.start_date);
   if (t.due_date) metaParts.push('Due ' + t.due_date);
   if (t.tags && t.tags.length > 0) metaParts.push(t.tags.map(function(tg) { return tg.name; }).join(', '));
   if (metaParts.length) {
@@ -1025,6 +1027,10 @@ function showTaskEditForm(t, detail) {
   titleInp.type = 'text';
   titleInp.value = t.title;
 
+  var startInp = document.createElement('input');
+  startInp.type = 'date';
+  if (t.start_date) startInp.value = t.start_date;
+
   var dateInp = document.createElement('input');
   dateInp.type = 'date';
   if (t.due_date) dateInp.value = t.due_date;
@@ -1054,14 +1060,19 @@ function showTaskEditForm(t, detail) {
     projSel.appendChild(opt);
   });
 
+  var dateRow = document.createElement('div');
+  dateRow.className = 'edit-row-2col';
+  dateRow.appendChild(field('Start Date', startInp));
+  dateRow.appendChild(field('Due Date', dateInp));
+
   var row2 = document.createElement('div');
   row2.className = 'edit-row-2col';
-  row2.appendChild(field('Due Date', dateInp));
   row2.appendChild(field('Priority', priSel));
+  row2.appendChild(field('Project', projSel));
 
   form.appendChild(field('Title', titleInp));
+  form.appendChild(dateRow);
   form.appendChild(row2);
-  form.appendChild(field('Project', projSel));
   form.appendChild(field('Notes', notesArea));
 
   var actionsDiv = document.createElement('div');
@@ -1091,6 +1102,7 @@ function showTaskEditForm(t, detail) {
     if (!titleInp.value.trim()) return;
     saveTaskEdit(t.id, {
       title: titleInp.value.trim(),
+      start_date: startInp.value || null,
       due_date: dateInp.value || null,
       priority: priSel.value,
       project_id: projSel.value ? parseInt(projSel.value) : null,
@@ -1164,10 +1176,16 @@ async function loadAndRenderSubtasks(parentId, container) {
       titleSpan.style.flex = '1';
       row.appendChild(cb);
       row.appendChild(titleSpan);
+      if (child.start_date) {
+        var startSpan = document.createElement('span');
+        startSpan.className = 'subtask-nested-hint';
+        startSpan.textContent = 'Start ' + child.start_date;
+        row.appendChild(startSpan);
+      }
       if (child.due_date) {
         var dateSpan = document.createElement('span');
         dateSpan.className = 'subtask-nested-hint';
-        dateSpan.textContent = child.due_date;
+        dateSpan.textContent = 'Due ' + child.due_date;
         row.appendChild(dateSpan);
       }
       if (child.subtask_count > 0) {
@@ -1271,6 +1289,12 @@ function showStepEditRow(child, originalRow, parentId, container) {
   titleInp.value = child.title;
   titleInp.style.cssText = 'flex:1;font-size:11px;padding:3px 6px;min-width:0';
 
+  var startInp2 = document.createElement('input');
+  startInp2.type = 'date';
+  if (child.start_date) startInp2.value = child.start_date;
+  startInp2.style.cssText = 'font-size:10px;padding:3px 5px;width:110px;flex-shrink:0';
+  startInp2.title = 'Start date (optional)';
+
   var dateInp = document.createElement('input');
   dateInp.type = 'date';
   if (child.due_date) dateInp.value = child.due_date;
@@ -1299,7 +1323,7 @@ function showStepEditRow(child, originalRow, parentId, container) {
 
   function doSave() {
     if (!titleInp.value.trim()) return;
-    saveStepEdit(child.id, titleInp.value.trim(), dateInp.value || null,
+    saveStepEdit(child.id, titleInp.value.trim(), startInp2.value || null, dateInp.value || null,
                  notesInp.value.trim() || null,
                  parentId, container, editRow, originalRow);
   }
@@ -1314,6 +1338,7 @@ function showStepEditRow(child, originalRow, parentId, container) {
   notesInp.addEventListener('keydown', function(e) { e.stopPropagation(); if (e.key === 'Escape') doCancel(); });
 
   topRow.appendChild(titleInp);
+  topRow.appendChild(startInp2);
   topRow.appendChild(dateInp);
   topRow.appendChild(cancelBtn);
   topRow.appendChild(saveBtn);
@@ -1325,11 +1350,11 @@ function showStepEditRow(child, originalRow, parentId, container) {
   titleInp.select();
 }
 
-async function saveStepEdit(stepId, title, dueDate, notes, parentId, container, editRow, originalRow) {
+async function saveStepEdit(stepId, title, startDate, dueDate, notes, parentId, container, editRow, originalRow) {
   var resp = await fetch('/api/tasks/' + stepId, {
     method: 'PUT',
     headers: authHeaders(),
-    body: JSON.stringify({ title: title, due_date: dueDate, notes: notes }),
+    body: JSON.stringify({ title: title, start_date: startDate, due_date: dueDate, notes: notes }),
   });
   if (!resp.ok) { console.warn('Save step edit failed:', resp.status); return; }
   editingStepId = null;
@@ -1365,6 +1390,7 @@ function closeModal() {
   document.getElementById('task-modal').style.display = 'none';
   document.getElementById('mt-title').value = '';
   document.getElementById('mt-notes').value = '';
+  document.getElementById('mt-start').value = '';
   document.getElementById('mt-due').value = '';
 }
 
@@ -1375,6 +1401,7 @@ async function createTask() {
   var body = {
     title: title,
     priority: document.getElementById('mt-priority').value,
+    start_date: document.getElementById('mt-start').value || null,
     due_date: document.getElementById('mt-due').value || null,
     project_id: parseInt(document.getElementById('mt-project').value) || null,
     notes: document.getElementById('mt-notes').value.trim() || null,

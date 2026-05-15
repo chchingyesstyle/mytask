@@ -27,6 +27,9 @@ def _migrate():
         if "parent_id" not in task_cols:
             conn.execute(text("ALTER TABLE tasks ADD COLUMN parent_id INTEGER REFERENCES tasks(id)"))
             conn.commit()
+        if "start_date" not in task_cols:
+            conn.execute(text("ALTER TABLE tasks ADD COLUMN start_date DATE"))
+            conn.commit()
         if "status_id" not in task_cols:
             conn.execute(text("ALTER TABLE tasks ADD COLUMN status_id INTEGER REFERENCES statuses(id)"))
             conn.commit()

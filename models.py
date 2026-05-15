@@ -52,6 +52,7 @@ class Task(Base):
     title = Column(String, nullable=False)
     status = Column(String, default="todo")
     priority = Column(String, default="medium")
+    start_date = Column(Date, nullable=True)
     due_date = Column(Date, nullable=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     notes = Column(Text, nullable=True)

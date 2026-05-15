@@ -13,6 +13,7 @@ class TaskCreate(BaseModel):
     title: str
     status_id: Optional[int] = None
     priority: str = "medium"
+    start_date: Optional[date] = None
     due_date: Optional[date] = None
     project_id: Optional[int] = None
     notes: Optional[str] = None
@@ -23,6 +24,7 @@ class TaskUpdate(BaseModel):
     title: Optional[str] = None
     status_id: Optional[int] = None
     priority: Optional[str] = None
+    start_date: Optional[date] = None
     due_date: Optional[date] = None
     project_id: Optional[int] = None
     notes: Optional[str] = None
@@ -36,6 +38,7 @@ def task_to_dict(task: models.Task) -> dict:
         "status_id": task.status_id,
         "status_name": status_name,
         "priority": task.priority,
+        "start_date": task.start_date.isoformat() if task.start_date else None,
         "due_date": task.due_date.isoformat() if task.due_date else None,
         "project_id": task.project_id,
         "project_name": task.project.name if task.project else None,

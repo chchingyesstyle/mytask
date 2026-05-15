@@ -198,7 +198,10 @@
         <option value="medium" selected>Medium Priority</option>
         <option value="low">Low Priority</option>
       </select>
-      <input id="mt-due" type="date">
+      <div style="display:flex;gap:8px">
+        <input id="mt-start" type="date" placeholder="Start date" style="flex:1" title="Start date (optional)">
+        <input id="mt-due" type="date" placeholder="Due date" style="flex:1" title="Due date (optional)">
+      </div>
       <select id="mt-project">
         <option value="">No Project</option>
       </select>
