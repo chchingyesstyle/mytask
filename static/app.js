@@ -126,6 +126,9 @@ function renderTagFilters() {
   var container = document.getElementById('tag-filters');
   while (container.firstChild) container.removeChild(container.firstChild);
   allTags.forEach(function(tag) {
+    var wrap = document.createElement('span');
+    wrap.style.cssText = 'position:relative;display:inline-flex;align-items:center';
+
     var btn = document.createElement('button');
     btn.className = 'filter-btn';
     btn.dataset.tagId = tag.id;
@@ -133,10 +136,32 @@ function renderTagFilters() {
     btn.style.cssText = (
       'background:' + hexToRgba(tag.color, 0.15) + ';' +
       'color:' + tag.color + ';' +
-      'border:1px solid ' + hexToRgba(tag.color, 0.3) + ';'
+      'border:1px solid ' + hexToRgba(tag.color, 0.3) + ';' +
+      'padding-right:18px;'
     );
     btn.addEventListener('click', function() { setFilter('tag:' + tag.id, btn); });
-    container.appendChild(btn);
+
+    var del = document.createElement('span');
+    del.textContent = '×';
+    del.title = 'Delete tag';
+    del.style.cssText = (
+      'position:absolute;right:4px;top:50%;transform:translateY(-50%);' +
+      'font-size:11px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s;' +
+      'color:' + tag.color + ';'
+    );
+    del.addEventListener('click', async function(e) {
+      e.stopPropagation();
+      if (!confirm('Delete tag "' + tag.name + '"?')) return;
+      var resp = await fetch('/api/tags/' + tag.id, { method: 'DELETE', headers: authHeaders() });
+      if (resp.ok) { await loadTags(); } else { alert('Failed to delete tag'); }
+    });
+
+    wrap.addEventListener('mouseenter', function() { del.style.opacity = '1'; });
+    wrap.addEventListener('mouseleave', function() { del.style.opacity = '0'; });
+
+    wrap.appendChild(btn);
+    wrap.appendChild(del);
+    container.appendChild(wrap);
   });
 
   // "+ New tag" toggle button
