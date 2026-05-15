@@ -56,7 +56,7 @@ docker cp static/style.css mytask-mytask-1:/app/static/style.css
 **Frontend:**
 - `hexToRgba(hex, alpha)` helper converts tag hex colours to rgba for inline styles
 - Tag pills get background/color set inline by JS — `.tag-pill` CSS class is structural only
-- `loadDashboard()` is called from `loadTasks()` on every task list refresh
+- `loadDashboard()` is called from `loadTasks()` on every task list refresh, and from `navigateTo('dashboard')` when the user switches to the Dashboard page
 - `editingTaskId` and `editingStepId` — module-level vars (like `expandedTaskId`) tracking which task/step edit form is open; both reset to `null` inside `toggleTask()` on card collapse
 - `showTaskEditForm(t, detail)` — builds `.task-edit-form` inside the expanded card; Save disabled when title is blank; Escape cancels
 - `hideTaskEditForm(taskId)` — removes the form element and resets `editingTaskId`
@@ -64,7 +64,14 @@ docker cp static/style.css mytask-mytask-1:/app/static/style.css
 - `showStepEditRow(child, originalRow, parentId, container)` — hides original row, inserts inline edit inputs; Enter saves, Escape cancels; enforces one-at-a-time via `editingStepId`
 - `saveStepEdit(...)` — `PUT /api/tasks/{id}` with title + due_date + notes; on success calls `loadTasks()` only (not a redundant `loadAndRenderSubtasks`)
 - Only one edit form (task or step) may be open at a time; opening a second collapses the first
-- `body { height: 100vh; overflow: hidden; }` in `style.css` is required for the main split-panel layout; `admin.html` overrides this with `<style>body { overflow-y: auto; height: auto; }</style>` in its own `<head>` to allow scrolling
+- Layout is a fixed left sidebar (140px) + flex `main-content`; body is `overflow: hidden` on desktop; `@media (max-width: 768px)` overrides to `overflow: auto`; `admin.html` also overrides with `<style>body { overflow-y: auto; height: auto; }</style>`
+- `currentPage`, `chatOpen`, `drawerOpen` — module-level state vars for the layout (alongside `editingTaskId` etc.)
+- `navigateTo(page)` — canonical owner of page-switching: shows/hides `.page` divs, updates sidebar active class, updates `#mobile-page-title`, calls `loadDashboard()` when page is `'dashboard'`; call `navigateTo(currentPage)` at end of `initApp()` to initialise state from JS (not hardcoded HTML)
+- `toggleChat()` — shows/hides `#chat-widget`, flips FAB emoji between 💬 and ✕, scrolls messages and focuses input when opening
+- `toggleDrawer()` — toggles `.open` on `#mobile-drawer` and shows/hides `#drawer-overlay`
+- Nav item click listeners go in `DOMContentLoaded`, NOT inside `initApp()` — placing them in `initApp()` accumulates duplicate listeners on every login call
+- Admin users need both `admin-link` (sidebar) and `admin-link-drawer` (mobile drawer) revealed in `initApp()`
+- CSS z-index stack: `.modal-overlay` 400 > `.mobile-drawer` 300 > `.drawer-overlay` 299 > `.chat-fab`/`.chat-widget` 200
 
 **AI agent:**
 - Tools: `create_task`, `update_task`, `delete_task`, `list_tasks`, `create_subtask`, `add_tag_to_task`, `remove_tag_from_task`
@@ -81,7 +88,7 @@ docker cp static/style.css mytask-mytask-1:/app/static/style.css
 - `tests/conftest.py` — `client` (unauthenticated), `seeded_client` (has data), `admin_headers` (returns `(client, headers)` tuple)
 - Tests use in-memory SQLite — the `conftest.py` overrides the engine before app import
 - Async AI calls in dashboard/agent are mocked with `AsyncMock` + `patch("routers.dashboard.client.chat.completions.create", ...)`
-- 74 tests; all must pass before merging
+- 75 tests; all must pass before merging
 
 ## Deployment
 
@@ -92,3 +99,4 @@ docker cp static/style.css mytask-mytask-1:/app/static/style.css
 - App container name: `mytask-mytask-1`; Nginx: `mytask-nginx-1`
 - Python/backend changes require `./docker.sh rebuild`; static file changes can use `docker cp`
 - LiteLLM proxy at `/u01/litellm` (config: `config.yaml`, key: in `.env`); reachable from container at `http://172.20.0.1:4000`
+- No browser (Chrome/Playwright) is installed on the server — MCP browser tools fail; UI verification requires the user to open the app manually at http://10.0.0.149:8080

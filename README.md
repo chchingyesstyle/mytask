@@ -4,6 +4,7 @@ A personal task manager with an integrated AI assistant, built on FastAPI, SQLit
 
 ## Features
 
+- **Sidebar navigation** — Fixed left sidebar (Tasks, Dashboard, Projects, Tags, Admin); floating 💬 chat widget expands from the bottom-right corner
 - **Task management** — Create, update, and delete tasks with priorities, due dates, projects, and notes
 - **Sub-tasks** — Nested checklist steps under any task; toggle done/todo inline
 - **Colour-coded tags** — Admin-defined tags assignable to tasks; filter the task list by tag
@@ -108,8 +109,8 @@ Open `http://localhost:8080`. Default admin login: `admin` / value of `ADMIN_PAS
 | DELETE | `/api/tasks/{id}/tags/{tag_id}` | user | Remove tag |
 | GET | `/api/dashboard` | user | Overdue/today/week counts + AI briefing |
 | GET | `/api/tags` | user | List all tags |
-| POST | `/api/tags` | admin | Create tag |
-| DELETE | `/api/tags/{id}` | admin | Delete tag |
+| POST | `/api/tags` | user | Create tag |
+| DELETE | `/api/tags/{id}` | user | Delete tag |
 | POST | `/api/chat` | user | SSE streaming AI chat |
 | GET | `/api/info` | — | Active model name (used by UI to label the chat panel) |
 
@@ -120,4 +121,4 @@ cd /u01/project/mytask
 python3 -m pytest -v
 ```
 
-74 tests covering auth, tasks, subtasks, tags, dashboard, projects, users, and AI agent tools.
+75 tests covering auth, tasks, subtasks, tags, dashboard, projects, users, and AI agent tools.
