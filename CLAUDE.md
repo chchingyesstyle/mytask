@@ -22,16 +22,20 @@ python3 -m pytest tests/test_tasks.py -v
 # Hot-copy static files (no rebuild needed for JS/CSS/HTML changes)
 docker cp static/app.js mytask-mytask-1:/app/static/app.js
 docker cp static/style.css mytask-mytask-1:/app/static/style.css
+docker cp static/index.html mytask-mytask-1:/app/static/index.html
 ```
 
 ## Architecture
 
 - `main.py` — app entry point; runs `Base.metadata.create_all()` then `_migrate()` (adds new columns to existing DB) then `seed_admin()`
-- `models.py` — all SQLAlchemy models: `User`, `Project`, `Tag`, `Task`, `task_tags` junction table
+- `models.py` — all SQLAlchemy models: `User`, `Project`, `Tag`, `Task`, `task_tags` junction table, `KBDocument`
 - `database.py` — engine + `get_db` dependency; in-memory SQLite for tests via `conftest.py` override
 - `routers/` — one file per resource; all routes prefixed `/api/`
 - `ai/agent.py` — tool-calling loop; sync but uses `AsyncOpenAI`; tools operate directly on the DB session passed in from `routers/chat.py`
 - `static/` — pure HTML/CSS/JS served by FastAPI's `StaticFiles`; no build step, no bundler
+- `seed.py` — `seed_admin()` reads `ADMIN_PASSWORD` from env; always upserts password hash on startup (changing env + rebuild updates it)
+- `kb/extract.py` — async `extract_text(file_path, file_type, openai_client)` for txt/md/pdf/docx/jpg/png
+- `routers/kb.py` — `POST /api/kb` (upload), `GET /api/kb` (list), `DELETE /api/kb/{id}`; files stored at `./data/uploads/`
 
 ## Key Conventions
 
@@ -40,6 +44,7 @@ docker cp static/style.css mytask-mytask-1:/app/static/style.css
 - `Task.children` uses `lazy="selectin"` — always loaded; no N+1 risk but included in every query
 - `Task.tags` uses `lazy="selectin"` via `task_tags` junction table
 - When filtering `parent_id IS NULL` in SQLAlchemy use `Task.parent_id == None  # noqa: E711`
+- `KBDocument` — `task_id=None` = global KB doc; `task_id=N` = task-attached; `extracted_text` stored at upload time; never returned to frontend
 
 **API:**
 - `GET /api/tasks` returns root tasks only by default; pass `?parent_id=N` for children
@@ -48,6 +53,8 @@ docker cp static/style.css mytask-mytask-1:/app/static/style.css
 - `PUT /api/tasks/{id}` uses `req.model_fields_set` (not `model_dump(exclude_none=True)`) to iterate update fields — this allows explicitly-sent `null` values (e.g. clearing `due_date` or `notes`) to correctly set the column to NULL
 - `GET /api/info` — unauthenticated; returns `{"model": MODEL}`; used by frontend to label the chat panel
 - `POST /api/tags` and `DELETE /api/tags/{id}` — open to all authenticated users (not admin-only)
+- `POST /api/tasks/{id}/ai-action` — body `{action, custom_prompt?}`; action one of meeting_prep/draft_email/summarise/action_items/custom
+- `GET /api/kb` accepts `?global=true` or `?task_id=N`; `global` is a Python reserved word — use `Query(alias="global")` in FastAPI
 
 **Auth:**
 - `get_current_user` dependency in `auth.py` — inject via `Depends(get_current_user)`
@@ -72,6 +79,12 @@ docker cp static/style.css mytask-mytask-1:/app/static/style.css
 - Nav item click listeners go in `DOMContentLoaded`, NOT inside `initApp()` — placing them in `initApp()` accumulates duplicate listeners on every login call
 - Admin users need both `admin-link` (sidebar) and `admin-link-drawer` (mobile drawer) revealed in `initApp()`
 - CSS z-index stack: `.modal-overlay` 400 > `.mobile-drawer` 300 > `.drawer-overlay` 299 > `.chat-fab`/`.chat-widget` 200
+- `body.light` CSS class overrides all `--bg-*`/`--border`/`--text` vars; `applyTheme(theme)` syncs class + localStorage + button labels
+- `TABLE_COLS`, `tableSort`, `tableExpanded`, `tableHiddenCols` (localStorage) — table view state vars
+- `renderTable()`, `buildTableRow()`, `buildSubtaskRow()`, `openTableCellEdit()` — table view; wired via `renderCurrentView()`
+- `renderKBPage()`, `buildKBDocCard()` — KB sidebar page; register in `navigateTo()` and add click listeners in `DOMContentLoaded`
+- `renderTaskDocs(task, detailEl)`, `renderTaskAIActions(task, detailEl)` — called from `toggleTask()` when card expands
+- Calendar and timeline both span `start_date` → `due_date`; don't index only by `due_date`
 
 **AI agent:**
 - Tools: `create_task`, `update_task`, `delete_task`, `list_tasks`, `create_subtask`, `add_tag_to_task`, `remove_tag_from_task`
@@ -88,12 +101,14 @@ docker cp static/style.css mytask-mytask-1:/app/static/style.css
 - `tests/conftest.py` — `client` (unauthenticated), `seeded_client` (has data), `admin_headers` (returns `(client, headers)` tuple)
 - Tests use in-memory SQLite — the `conftest.py` overrides the engine before app import
 - Async AI calls in dashboard/agent are mocked with `AsyncMock` + `patch("routers.dashboard.client.chat.completions.create", ...)`
-- 75 tests; all must pass before merging
+- 99 tests; all must pass before merging
+- `seeded_client` fixture takes `monkeypatch` and sets `ADMIN_PASSWORD` env var — required since seed.py reads it from env
 
 ## Deployment
 
 - Runs on Docker Compose; app on port 8080, Nginx on 443/8080
 - Database persisted at `./data/mytask.db` (bind-mounted volume — survives rebuilds)
+- KB uploads persisted at `./data/uploads/` — same `./data:/app/data` bind mount; survives rebuilds
 - SSL certs in `./certs/`; Cloudflare Full SSL mode at `uat.lvcopy.com`
 - `.env` holds `JWT_SECRET_KEY`, `ADMIN_PASSWORD`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`
 - App container name: `mytask-mytask-1`; Nginx: `mytask-nginx-1`
