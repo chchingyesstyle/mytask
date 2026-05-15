@@ -280,7 +280,7 @@ button.btn-secondary { background: var(--border); }
 /* ── Modal ── */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.6);
-  display: flex; align-items: center; justify-content: center; z-index: 100;
+  display: flex; align-items: center; justify-content: center; z-index: 400;
 }
 .modal-box {
   background: var(--bg-card); border: 1px solid var(--border);
@@ -391,6 +391,6 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
   .main-content { overflow: visible; }
   .page { overflow: visible; }
   .task-list { overflow: visible; }
-  .chat-widget { width: calc(100vw - 24px); right: 12px; }
+  .chat-widget { width: calc(100vw - 24px); right: 12px; height: calc(100vh - 90px); max-height: 400px; bottom: 68px; }
   .chat-fab { bottom: 16px; right: 16px; }
 }
