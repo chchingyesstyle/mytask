@@ -5,10 +5,10 @@ from sqlalchemy.orm import Session
 import models
 
 client = AsyncOpenAI(
-    base_url="https://integrate.api.nvidia.com/v1",
-    api_key=os.getenv("NVIDIA_API_KEY", ""),
+    base_url=os.getenv("OPENAI_BASE_URL", "https://integrate.api.nvidia.com/v1"),
+    api_key=os.getenv("OPENAI_API_KEY", os.getenv("NVIDIA_API_KEY", "")),
 )
-MODEL = os.getenv("MODEL_NAME", "deepseek-ai/deepseek-v4-flash")
+MODEL = os.getenv("OPENAI_MODEL", os.getenv("MODEL_NAME", "deepseek-ai/deepseek-v4-flash"))
 
 TOOLS = [
     {
