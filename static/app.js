@@ -599,7 +599,7 @@ function switchView(view) {
 function renderCalendar() {
   var grid = document.getElementById('calendar-grid');
   var label = document.getElementById('cal-month-label');
-  if (!grid || !label) return;
+  if (!grid || !label || !currentCalendarMonth) return;
   while (grid.firstChild) grid.removeChild(grid.firstChild);
 
   var y = currentCalendarMonth.year;
@@ -1521,6 +1521,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var calPrev = document.getElementById('cal-prev');
   var calNext = document.getElementById('cal-next');
   if (calPrev) calPrev.addEventListener('click', function() {
+    if (!currentCalendarMonth) return;
     if (currentCalendarMonth.month === 0) {
       currentCalendarMonth = { year: currentCalendarMonth.year - 1, month: 11 };
     } else {
@@ -1529,6 +1530,7 @@ document.addEventListener('DOMContentLoaded', function() {
     renderCalendar();
   });
   if (calNext) calNext.addEventListener('click', function() {
+    if (!currentCalendarMonth) return;
     if (currentCalendarMonth.month === 11) {
       currentCalendarMonth = { year: currentCalendarMonth.year + 1, month: 0 };
     } else {
