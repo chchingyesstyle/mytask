@@ -654,12 +654,20 @@ function renderCalendar() {
   var daysInPrev = new Date(y, m, 0).getDate();
   var today = new Date().toISOString().split('T')[0];
 
-  // Build task index by due_date
+  // Build task index spanning start_date through due_date
   var tasksByDate = {};
   filteredTasks().forEach(function(t) {
-    if (t.due_date) {
-      if (!tasksByDate[t.due_date]) tasksByDate[t.due_date] = [];
-      tasksByDate[t.due_date].push(t);
+    var from = t.start_date || t.due_date;
+    var to = t.due_date || t.start_date;
+    if (!from) return;
+    var cur = new Date(from + 'T00:00:00');
+    var endDate = new Date(to + 'T00:00:00');
+    var maxIter = 366;
+    while (cur <= endDate && maxIter-- > 0) {
+      var ds = cur.getFullYear() + '-' + String(cur.getMonth() + 1).padStart(2, '0') + '-' + String(cur.getDate()).padStart(2, '0');
+      if (!tasksByDate[ds]) tasksByDate[ds] = [];
+      tasksByDate[ds].push(t);
+      cur.setDate(cur.getDate() + 1);
     }
   });
 
@@ -2752,6 +2760,20 @@ function renderTaskAIActions(task, detailEl) {
   btnRow.className = 'task-ai-buttons';
   section.appendChild(btnRow);
 
+  var customRow = document.createElement('div');
+  customRow.style.cssText = 'display:flex;gap:6px;margin-top:6px';
+  var customInput = document.createElement('textarea');
+  customInput.placeholder = 'Ask anything about this task…';
+  customInput.rows = 2;
+  customInput.style.cssText = 'flex:1;font-size:11px;font-family:inherit;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:5px 8px;resize:vertical';
+  var askBtn = document.createElement('button');
+  askBtn.className = 'btn-primary task-ai-btn';
+  askBtn.style.alignSelf = 'flex-end';
+  askBtn.textContent = '💬 Ask';
+  customRow.appendChild(customInput);
+  customRow.appendChild(askBtn);
+  section.appendChild(customRow);
+
   var outputDiv = document.createElement('div');
   section.appendChild(outputDiv);
 
@@ -2829,6 +2851,71 @@ function renderTaskAIActions(task, detailEl) {
       });
     });
     btnRow.appendChild(btn);
+  });
+
+  function runCustomAsk() {
+    var prompt = customInput.value.trim();
+    if (!prompt) return;
+    askBtn.disabled = true;
+    askBtn.textContent = '⏳ Asking…';
+    outputDiv.textContent = '';
+    fetch('/api/tasks/' + task.id + '/ai-action', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+      body: JSON.stringify({ action: 'custom', custom_prompt: prompt })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      askBtn.disabled = false;
+      askBtn.textContent = '💬 Ask';
+      outputDiv.textContent = '';
+      if (data.error || !data.result) {
+        var errMsg = document.createElement('p');
+        errMsg.style.cssText = 'font-size:11px;color:#ef4444;padding:6px 0';
+        errMsg.textContent = 'AI unavailable, please try again.';
+        outputDiv.appendChild(errMsg);
+        return;
+      }
+      var out = document.createElement('div');
+      out.className = 'task-ai-output';
+      var hdr = document.createElement('div');
+      hdr.className = 'task-ai-output-header';
+      hdr.textContent = '💬 Custom — generated';
+      var txt = document.createElement('div');
+      txt.className = 'task-ai-output-text';
+      txt.textContent = data.result;
+      var actRow = document.createElement('div');
+      actRow.className = 'task-ai-output-actions';
+      var copyBtn2 = document.createElement('button');
+      copyBtn2.className = 'btn-primary task-ai-btn';
+      copyBtn2.textContent = '📋 Copy';
+      copyBtn2.addEventListener('click', function() {
+        navigator.clipboard.writeText(data.result).then(function() {
+          copyBtn2.textContent = '✓ Copied';
+          setTimeout(function() { copyBtn2.textContent = '📋 Copy'; }, 1500);
+        });
+      });
+      var regenBtn2 = document.createElement('button');
+      regenBtn2.className = 'btn-secondary task-ai-btn';
+      regenBtn2.textContent = 'Regenerate';
+      regenBtn2.addEventListener('click', runCustomAsk);
+      actRow.appendChild(copyBtn2);
+      actRow.appendChild(regenBtn2);
+      out.appendChild(hdr);
+      out.appendChild(txt);
+      out.appendChild(actRow);
+      outputDiv.appendChild(out);
+    }).catch(function() {
+      askBtn.disabled = false;
+      askBtn.textContent = '💬 Ask';
+      var errMsg = document.createElement('p');
+      errMsg.style.cssText = 'font-size:11px;color:#ef4444;padding:6px 0';
+      errMsg.textContent = 'AI unavailable, please try again.';
+      outputDiv.appendChild(errMsg);
+    });
+  }
+
+  askBtn.addEventListener('click', runCustomAsk);
+  customInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) runCustomAsk();
   });
 
   detailEl.appendChild(section);

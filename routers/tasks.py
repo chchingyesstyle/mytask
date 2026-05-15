@@ -34,7 +34,8 @@ class TaskUpdate(BaseModel):
     tag_ids: Optional[list[int]] = None
 
 class AIActionRequest(BaseModel):
-    action: str  # "meeting_prep" | "draft_email" | "summarise" | "action_items"
+    action: str  # "meeting_prep" | "draft_email" | "summarise" | "action_items" | "custom"
+    custom_prompt: Optional[str] = None
 
 def task_to_dict(task: models.Task) -> dict:
     status_name = task.status_rel.name if task.status_rel else "Todo"
@@ -278,7 +279,10 @@ Knowledge base documents:
 
     user_prompt = action_prompts.get(req.action)
     if not user_prompt:
-        raise HTTPException(400, f"Unknown action: {req.action}")
+        if req.action == 'custom' and req.custom_prompt and req.custom_prompt.strip():
+            user_prompt = req.custom_prompt.strip()
+        else:
+            raise HTTPException(400, f"Unknown action: {req.action}")
 
     try:
         response = await openai_client.chat.completions.create(
