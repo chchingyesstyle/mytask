@@ -73,6 +73,8 @@ async function initApp() {
     await loadProjects();
     await loadTags();
     await loadTasks();
+    var now = new Date();
+    currentCalendarMonth = { year: now.getFullYear(), month: now.getMonth() };
     navigateTo(currentPage);
     addAiMessage('Hello ' + currentUser.username + '! I am your AI assistant. Tell me what tasks you need help with.');
   } catch (e) { showLogin(); }
@@ -594,8 +596,232 @@ function switchView(view) {
   renderCurrentView();
 }
 
-function renderCalendar() { /* stub — implemented in Task 8 */ }
-function renderTimeline() { /* stub — implemented in Task 9 */ }
+function renderCalendar() {
+  var grid = document.getElementById('calendar-grid');
+  var label = document.getElementById('cal-month-label');
+  if (!grid || !label) return;
+  while (grid.firstChild) grid.removeChild(grid.firstChild);
+
+  var y = currentCalendarMonth.year;
+  var m = currentCalendarMonth.month;
+  var monthNames = ['January','February','March','April','May','June',
+    'July','August','September','October','November','December'];
+  label.textContent = monthNames[m] + ' ' + y;
+
+  // Day headers
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function(d) {
+    var h = document.createElement('div');
+    h.className = 'cal-day-header';
+    h.textContent = d;
+    grid.appendChild(h);
+  });
+
+  var firstDay = new Date(y, m, 1).getDay();  // 0=Sun
+  var daysInMonth = new Date(y, m + 1, 0).getDate();
+  var daysInPrev = new Date(y, m, 0).getDate();
+  var today = new Date().toISOString().split('T')[0];
+
+  // Build task index by due_date
+  var tasksByDate = {};
+  filteredTasks().forEach(function(t) {
+    if (t.due_date) {
+      if (!tasksByDate[t.due_date]) tasksByDate[t.due_date] = [];
+      tasksByDate[t.due_date].push(t);
+    }
+  });
+
+  // Leading cells from previous month
+  for (var i = firstDay - 1; i >= 0; i--) {
+    var cell = document.createElement('div');
+    cell.className = 'cal-cell other-month';
+    var dateEl = document.createElement('div');
+    dateEl.className = 'cal-date';
+    dateEl.textContent = daysInPrev - i;
+    cell.appendChild(dateEl);
+    grid.appendChild(cell);
+  }
+
+  // Current month cells
+  for (var d = 1; d <= daysInMonth; d++) {
+    var dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    var cell = document.createElement('div');
+    cell.className = 'cal-cell' + (dateStr === today ? ' today' : '');
+    var dateEl = document.createElement('div');
+    dateEl.className = 'cal-date';
+    dateEl.textContent = d;
+    cell.appendChild(dateEl);
+    // Task pills
+    (tasksByDate[dateStr] || []).forEach(function(t) {
+      var pill = document.createElement('div');
+      pill.className = 'cal-task-pill priority-' + t.priority;
+      pill.textContent = t.title;
+      pill.title = t.title;
+      pill.addEventListener('click', function(e) {
+        e.stopPropagation();
+        navigateTo('tasks');
+        switchView('list');
+        // Expand the task in list view
+        expandedTaskId = t.id;
+        renderTasks();
+      });
+      cell.appendChild(pill);
+    });
+    // Click empty area to open new task modal with pre-filled date
+    cell.addEventListener('click', function(captured_date) {
+      return function() { openNewTaskModal(captured_date, null, null); };
+    }(dateStr));
+    grid.appendChild(cell);
+  }
+
+  // Trailing cells
+  var totalCells = firstDay + daysInMonth;
+  var trailing = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (var t2 = 1; t2 <= trailing; t2++) {
+    var cell = document.createElement('div');
+    cell.className = 'cal-cell other-month';
+    var dateEl = document.createElement('div');
+    dateEl.className = 'cal-date';
+    dateEl.textContent = t2;
+    cell.appendChild(dateEl);
+    grid.appendChild(cell);
+  }
+}
+
+function renderTimeline() {
+  var rowsEl = document.getElementById('timeline-rows');
+  var rangeLabel = document.getElementById('tl-range-label');
+  if (!rowsEl || !rangeLabel) return;
+  while (rowsEl.firstChild) rowsEl.removeChild(rowsEl.firstChild);
+
+  var tasksWithDate = filteredTasks().filter(function(t) { return t.due_date; });
+  var tasksNoDate   = filteredTasks().filter(function(t) { return !t.due_date; });
+
+  if (tasksWithDate.length === 0 && tasksNoDate.length === 0) {
+    var empty = document.createElement('div');
+    empty.className = 'tl-empty';
+    empty.textContent = 'No tasks with due dates yet';
+    rowsEl.appendChild(empty);
+    rangeLabel.textContent = '';
+    return;
+  }
+
+  // Compute date window
+  var dates = tasksWithDate.length > 0
+    ? tasksWithDate.map(function(t) { return new Date(t.due_date + 'T00:00:00'); })
+    : [new Date()];
+  var minDate = new Date(Math.min.apply(null, dates));
+  var maxDate = new Date(Math.max.apply(null, dates));
+
+  minDate.setDate(minDate.getDate() - 3 + currentTimelineOffset);
+  maxDate.setDate(maxDate.getDate() + 7 + currentTimelineOffset);
+
+  var windowDays = Math.max(14, Math.round((maxDate - minDate) / 86400000) + 1);
+  maxDate = new Date(minDate);
+  maxDate.setDate(minDate.getDate() + windowDays - 1);
+
+  var fmt = function(d) { return (d.getMonth()+1) + '/' + d.getDate(); };
+  rangeLabel.textContent = fmt(minDate) + ' — ' + fmt(maxDate);
+
+  function dateToPercent(dateStr) {
+    var d = new Date(dateStr + 'T00:00:00');
+    var diff = Math.round((d - minDate) / 86400000);
+    return (diff / windowDays) * 100;
+  }
+
+  // Date header ticks (every 7 days)
+  var header = document.createElement('div');
+  header.className = 'tl-date-header';
+  for (var i = 0; i < windowDays; i += 7) {
+    var tick = document.createElement('div');
+    tick.className = 'tl-date-tick';
+    var d = new Date(minDate); d.setDate(minDate.getDate() + i);
+    tick.textContent = fmt(d);
+    tick.style.width = Math.min(7, windowDays - i) / windowDays * 100 + '%';
+    header.appendChild(tick);
+  }
+  rowsEl.appendChild(header);
+
+  // Task rows
+  tasksWithDate.forEach(function(t) {
+    var row = document.createElement('div');
+    row.className = 'tl-row';
+    var lbl = document.createElement('div');
+    lbl.className = 'tl-row-label';
+    lbl.textContent = t.title;
+    lbl.title = t.title;
+    row.appendChild(lbl);
+    var barArea = document.createElement('div');
+    barArea.className = 'tl-row-bar-area';
+    var bar = document.createElement('div');
+    bar.className = 'gantt-bar priority-' + t.priority;
+    var leftPct = dateToPercent(t.due_date);
+    var widthPct = (1 / windowDays) * 100;
+    bar.style.left = leftPct + '%';
+    bar.style.width = widthPct + '%';
+    bar.title = t.title + ' · due ' + t.due_date;
+
+    // Drag to change due date
+    var dragStartX = null;
+    var origLeft = null;
+    bar.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      dragStartX = e.clientX;
+      origLeft = leftPct;
+      var barAreaRect = barArea.getBoundingClientRect();
+      var barAreaWidth = barAreaRect.width;
+      function onMove(ev) {
+        var dx = ev.clientX - dragStartX;
+        var daysDelta = Math.round((dx / barAreaWidth) * windowDays);
+        var newPct = Math.max(0, Math.min(origLeft + (daysDelta / windowDays) * 100, 100 - widthPct));
+        bar.style.left = newPct + '%';
+      }
+      function onUp(ev) {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        var dx = ev.clientX - dragStartX;
+        var daysDelta = Math.round((dx / barAreaRect.width) * windowDays);
+        if (daysDelta !== 0) {
+          var origDate = new Date(t.due_date + 'T00:00:00');
+          origDate.setDate(origDate.getDate() + daysDelta);
+          var newDate = origDate.toISOString().split('T')[0];
+          fetch('/api/tasks/' + t.id, {
+            method: 'PUT', headers: authHeaders(),
+            body: JSON.stringify({ due_date: newDate }),
+          }).then(function() { loadTasks(); });
+        } else {
+          bar.style.left = leftPct + '%';
+        }
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    barArea.appendChild(bar);
+    row.appendChild(barArea);
+    rowsEl.appendChild(row);
+  });
+
+  // "No due date" section
+  if (tasksNoDate.length > 0) {
+    var sep = document.createElement('div');
+    sep.className = 'tl-separator';
+    sep.textContent = 'No due date (' + tasksNoDate.length + ')';
+    rowsEl.appendChild(sep);
+    tasksNoDate.forEach(function(t) {
+      var row = document.createElement('div');
+      row.className = 'tl-row';
+      var lbl = document.createElement('div');
+      lbl.className = 'tl-row-label';
+      lbl.textContent = t.title;
+      row.appendChild(lbl);
+      var dash = document.createElement('div');
+      dash.style.cssText = 'flex:1;color:var(--text-dim);font-size:10px;display:flex;align-items:center;padding-left:8px';
+      dash.textContent = '— no date';
+      row.appendChild(dash);
+      rowsEl.appendChild(row);
+    });
+  }
+}
 
 function renderBoard() {
   var container = document.getElementById('board-columns');
@@ -1291,5 +1517,33 @@ document.addEventListener('DOMContentLoaded', function() {
       if (tab.disabled) return;
       switchView(tab.dataset.view);
     });
+  });
+  var calPrev = document.getElementById('cal-prev');
+  var calNext = document.getElementById('cal-next');
+  if (calPrev) calPrev.addEventListener('click', function() {
+    if (currentCalendarMonth.month === 0) {
+      currentCalendarMonth = { year: currentCalendarMonth.year - 1, month: 11 };
+    } else {
+      currentCalendarMonth = { year: currentCalendarMonth.year, month: currentCalendarMonth.month - 1 };
+    }
+    renderCalendar();
+  });
+  if (calNext) calNext.addEventListener('click', function() {
+    if (currentCalendarMonth.month === 11) {
+      currentCalendarMonth = { year: currentCalendarMonth.year + 1, month: 0 };
+    } else {
+      currentCalendarMonth = { year: currentCalendarMonth.year, month: currentCalendarMonth.month + 1 };
+    }
+    renderCalendar();
+  });
+  var tlPrev = document.getElementById('tl-prev');
+  var tlNext = document.getElementById('tl-next');
+  if (tlPrev) tlPrev.addEventListener('click', function() {
+    currentTimelineOffset -= 7;
+    renderTimeline();
+  });
+  if (tlNext) tlNext.addEventListener('click', function() {
+    currentTimelineOffset += 7;
+    renderTimeline();
   });
 });
