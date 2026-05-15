@@ -91,3 +91,81 @@ def test_task_response_has_status_id_and_name(admin_headers):
     assert "status_name" in data
     assert data["status_name"] == "Todo"
     assert "status" not in data  # old field removed
+
+# KB tests
+
+def test_kb_documents_table_exists(admin_headers):
+    client, headers = admin_headers
+    r = client.get("/api/kb?global=true", headers=headers)
+    assert r.status_code == 200
+    assert r.json() == []
+
+import asyncio
+from pathlib import Path
+import tempfile
+
+def test_extract_text_txt():
+    from kb.extract import extract_text
+    with tempfile.NamedTemporaryFile(suffix=".txt", mode="w", delete=False, encoding="utf-8") as f:
+        f.write("Hello world")
+        tmp = Path(f.name)
+    result = asyncio.get_event_loop().run_until_complete(extract_text(tmp, "txt", None))
+    tmp.unlink()
+    assert result == "Hello world"
+
+def test_extract_text_md():
+    from kb.extract import extract_text
+    with tempfile.NamedTemporaryFile(suffix=".md", mode="w", delete=False, encoding="utf-8") as f:
+        f.write("# Title\nBody text")
+        tmp = Path(f.name)
+    result = asyncio.get_event_loop().run_until_complete(extract_text(tmp, "md", None))
+    tmp.unlink()
+    assert "Title" in result and "Body text" in result
+
+def test_kb_upload_txt(admin_headers, tmp_path):
+    client, headers = admin_headers
+    txt_file = tmp_path / "test.txt"
+    txt_file.write_text("Sample knowledge base content")
+    with open(txt_file, "rb") as f:
+        r = client.post("/api/kb", files={"file": ("test.txt", f, "text/plain")}, headers=headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["title"] == "test.txt"
+    assert data["file_type"] == "txt"
+    assert data["has_text"] is True
+    assert data["task_id"] is None
+
+def test_kb_delete(admin_headers, tmp_path):
+    client, headers = admin_headers
+    txt_file = tmp_path / "del.txt"
+    txt_file.write_text("Delete me")
+    with open(txt_file, "rb") as f:
+        r = client.post("/api/kb", files={"file": ("del.txt", f, "text/plain")}, headers=headers)
+    doc_id = r.json()["id"]
+    r2 = client.delete(f"/api/kb/{doc_id}", headers=headers)
+    assert r2.status_code == 204
+    r3 = client.get("/api/kb", headers=headers)
+    ids = [d["id"] for d in r3.json()]
+    assert doc_id not in ids
+
+from unittest.mock import AsyncMock, patch, MagicMock
+
+def test_task_ai_action(admin_headers):
+    client, headers = admin_headers
+    tasks_r = client.post("/api/tasks", json={"title": "Test AI Task"}, headers=headers)
+    task_id = tasks_r.json()["id"]
+
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "Meeting brief here."
+
+    with patch("routers.tasks.openai_client") as mock_client:
+        mock_client.chat = MagicMock()
+        mock_client.chat.completions = MagicMock()
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+        r = client.post(f"/api/tasks/{task_id}/ai-action",
+                        json={"action": "meeting_prep"}, headers=headers)
+
+    assert r.status_code == 200
+    data = r.json()
+    assert "result" in data

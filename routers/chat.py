@@ -25,6 +25,18 @@ async def chat(
     tasks = db.query(models.Task).filter(models.Task.owner_id == current_user.id).all()
     system_prompt = build_system_prompt([task_to_dict(t) for t in tasks])
 
+    global_docs = db.query(models.KBDocument).filter(
+        models.KBDocument.owner_id == current_user.id,
+        models.KBDocument.task_id == None  # noqa: E711
+    ).order_by(models.KBDocument.created_at.desc()).limit(5).all()
+
+    kb_text = "\n\n".join(
+        f"[{doc.title}]\n{doc.extracted_text[:2000]}"
+        for doc in global_docs if doc.extracted_text
+    )
+    if kb_text:
+        system_prompt += f"\n\nKnowledge base:\n---\n{kb_text}\n---"
+
     messages = [{"role": "system", "content": system_prompt}]
     for msg in req.history[-10:]:
         messages.append(msg)

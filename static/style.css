@@ -658,3 +658,44 @@ body.light .task-table tbody tr:hover { background:rgba(0,0,0,.02); }
   border-radius:var(--r); padding:8px; z-index:50; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,.3); }
 .table-col-picker label { display:flex; align-items:center; gap:6px; padding:4px 0;
   font-size:12px; cursor:pointer; color:var(--text); }
+
+/* KB Page */
+.kb-section-title { font-size:10px; color:var(--text-dim); text-transform:uppercase;
+  letter-spacing:.05em; margin:10px 0 6px; padding:0 4px; }
+.kb-doc-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r);
+  padding:8px 10px; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+.kb-doc-icon { font-size:18px; flex-shrink:0; }
+.kb-doc-info { flex:1; min-width:0; }
+.kb-doc-name { font-size:12px; font-weight:600; color:var(--text); white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; }
+.kb-doc-meta { font-size:10px; color:var(--text-dim); margin-top:1px; }
+.kb-doc-delete { background:none; border:none; color:var(--text-dim); cursor:pointer;
+  font-size:12px; padding:2px 4px; }
+.kb-doc-delete:hover { color:#ef4444; }
+.kb-upload-btn { display:flex; align-items:center; gap:6px; }
+
+/* Task card doc section */
+.task-docs-section { padding:8px 12px; border-top:1px solid var(--border); }
+.task-docs-label { font-size:10px; color:var(--text-dim); text-transform:uppercase;
+  letter-spacing:.05em; margin-bottom:6px; }
+.task-doc-pills { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.task-doc-pill { background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--r);
+  padding:2px 8px; font-size:11px; color:var(--text); display:inline-flex; align-items:center; gap:4px; }
+.task-doc-pill-del { color:var(--text-dim); cursor:pointer; background:none; border:none;
+  font-size:10px; padding:0; line-height:1; }
+.task-doc-pill-del:hover { color:#ef4444; }
+.task-attach-btn { background:none; border:1px dashed var(--border); border-radius:var(--r);
+  padding:2px 8px; font-size:11px; color:var(--text-dim); cursor:pointer; }
+.task-attach-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* AI Actions */
+.task-ai-section { padding:8px 12px; border-top:1px solid var(--border); }
+.task-ai-label { font-size:10px; color:var(--text-dim); text-transform:uppercase;
+  letter-spacing:.05em; margin-bottom:6px; }
+.task-ai-buttons { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+.task-ai-btn { font-size:11px; padding:4px 9px; }
+.task-ai-output { background:rgba(74,144,217,.04); border:1px solid var(--border);
+  border-radius:var(--r); padding:10px; font-size:11px; color:var(--text); line-height:1.6; }
+.task-ai-output-header { font-size:10px; color:var(--accent); font-weight:600; margin-bottom:6px; }
+.task-ai-output-text { white-space:pre-wrap; }
+.task-ai-output-actions { margin-top:8px; display:flex; gap:6px; }

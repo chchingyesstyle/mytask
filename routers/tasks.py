@@ -1,11 +1,14 @@
+import os
 from datetime import date, datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from database import get_db
 from auth import get_current_user
 import models
+from ai.agent import client as openai_client
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -29,6 +32,9 @@ class TaskUpdate(BaseModel):
     project_id: Optional[int] = None
     notes: Optional[str] = None
     tag_ids: Optional[list[int]] = None
+
+class AIActionRequest(BaseModel):
+    action: str  # "meeting_prep" | "draft_email" | "summarise" | "action_items"
 
 def task_to_dict(task: models.Task) -> dict:
     status_name = task.status_rel.name if task.status_rel else "Todo"
@@ -219,3 +225,70 @@ def remove_tag_from_task(
     task.tags = [t for t in task.tags if t.id != tag_id]
     db.commit()
     return Response(status_code=204)
+
+
+@router.post("/{task_id}/ai-action")
+async def task_ai_action(
+    task_id: int,
+    req: AIActionRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    task = db.query(models.Task).filter(models.Task.id == task_id, models.Task.owner_id == current_user.id).first()
+    if not task:
+        raise HTTPException(404, "Task not found")
+
+    project_name = task.project.name if task.project else "none"
+    status_name = task.status_rel.name if task.status_rel else "unknown"
+
+    docs = db.query(models.KBDocument).filter(
+        models.KBDocument.owner_id == current_user.id,
+        or_(models.KBDocument.task_id == task_id, models.KBDocument.task_id == None)  # noqa: E711
+    ).order_by(models.KBDocument.created_at.asc()).all()
+
+    kb_text = ""
+    total = 0
+    for doc in docs:
+        if doc.extracted_text:
+            chunk = doc.extracted_text[:12000 - total]
+            kb_text += f"[{doc.title}]\n{chunk}\n\n"
+            total += len(chunk)
+            if total >= 12000:
+                break
+
+    system_prompt = f"""You are a productivity assistant. The user is working on a task.
+
+Task: {task.title}
+Project: {project_name}
+Due: {task.due_date or "not set"}
+Status: {status_name}
+Notes: {task.notes or "none"}
+
+Knowledge base documents:
+---
+{kb_text or "No documents attached."}
+---"""
+
+    action_prompts = {
+        "meeting_prep": "Based on the task details and documents above, generate a concise meeting preparation brief: objective, suggested attendees, agenda with time allocations, and key questions to address.",
+        "draft_email": "Based on the task details and documents above, draft a professional email. Include a subject line, greeting, body, and sign-off. Keep it concise and action-oriented.",
+        "summarise": "Summarise the key points from the attached documents in relation to this task. Use bullet points. Be concise.",
+        "action_items": "Extract a clear list of action items and next steps from the task details and attached documents. Format as a numbered list with owner and deadline where identifiable."
+    }
+
+    user_prompt = action_prompts.get(req.action)
+    if not user_prompt:
+        raise HTTPException(400, f"Unknown action: {req.action}")
+
+    try:
+        response = await openai_client.chat.completions.create(
+            model=os.environ.get("OPENAI_MODEL", "gpt-4o"),
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ]
+        )
+        result = response.choices[0].message.content
+        return {"result": result}
+    except Exception:
+        return {"result": None, "error": "AI unavailable"}

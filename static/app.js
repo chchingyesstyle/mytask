@@ -123,7 +123,7 @@ function showLogin() {
 
 function navigateTo(page) {
   currentPage = page;
-  var pages = ['tasks', 'dashboard', 'projects', 'tags'];
+  var pages = ['tasks', 'dashboard', 'projects', 'tags', 'kb'];
   pages.forEach(function(p) {
     var el = document.getElementById('page-' + p);
     if (el) el.style.display = p === page ? 'flex' : 'none';
@@ -136,13 +136,14 @@ function navigateTo(page) {
     el.classList.toggle('active', el.dataset.page === page);
   });
   // Update mobile page title
-  var titles = { tasks: 'Tasks', dashboard: 'Dashboard', projects: 'Projects', tags: 'Tags' };
+  var titles = { tasks: 'Tasks', dashboard: 'Dashboard', projects: 'Projects', tags: 'Tags', kb: 'Knowledge Base' };
   var titleEl = document.getElementById('mobile-page-title');
   if (titleEl) titleEl.textContent = titles[page] || page;
   // Load dashboard data when switching to that page
   if (page === 'dashboard') loadDashboard();
   if (page === 'projects') renderProjectsPage();
   if (page === 'tags') renderTagsPage();
+  if (page === 'kb') renderKBPage();
 }
 
 function toggleChat() {
@@ -546,6 +547,8 @@ function buildTaskCard(t) {
   subtaskSection.className = 'subtask-section';
   if (expandedTaskId === t.id) {
     loadAndRenderSubtasks(t.id, subtaskSection);
+    renderTaskDocs(t, detail);
+    renderTaskAIActions(t, detail);
   }
   detail.appendChild(subtaskSection);
 
@@ -2661,6 +2664,290 @@ function buildTagCreateForm(list) {
   form.appendChild(saveBtn);
   form.appendChild(cancelBtn);
   return form;
+}
+
+// Task card: attached docs section
+function renderTaskDocs(task, detailEl) {
+  var existing = detailEl.querySelector('.task-docs-section');
+  if (existing) existing.remove();
+
+  var section = document.createElement('div');
+  section.className = 'task-docs-section';
+
+  var label = document.createElement('div');
+  label.className = 'task-docs-label';
+  label.textContent = 'Attached docs';
+  section.appendChild(label);
+
+  var pills = document.createElement('div');
+  pills.className = 'task-doc-pills';
+  section.appendChild(pills);
+
+  fetch('/api/kb?task_id=' + task.id, { headers: authHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function(docs) {
+      docs.forEach(function(doc) {
+        var pill = document.createElement('span');
+        pill.className = 'task-doc-pill';
+        var icons = { pdf: '📄', docx: '📝', txt: '📄', md: '📄', jpg: '🖼', jpeg: '🖼', png: '🖼' };
+        pill.textContent = (icons[doc.file_type] || '📄') + ' ' + doc.title + ' ';
+        var del = document.createElement('button');
+        del.className = 'task-doc-pill-del';
+        del.textContent = '✕';
+        del.addEventListener('click', function(e) {
+          e.stopPropagation();
+          fetch('/api/kb/' + doc.id, { method: 'DELETE', headers: authHeaders() })
+            .then(function() { renderTaskDocs(task, detailEl); });
+        });
+        pill.appendChild(del);
+        pills.appendChild(pill);
+      });
+
+      var attachBtn = document.createElement('button');
+      attachBtn.className = 'task-attach-btn';
+      attachBtn.textContent = '+ Attach';
+      var fi = document.createElement('input');
+      fi.type = 'file';
+      fi.multiple = true;
+      fi.accept = '.pdf,.docx,.txt,.md,.jpg,.jpeg,.png';
+      fi.style.display = 'none';
+      fi.addEventListener('change', function() {
+        var files = Array.from(fi.files);
+        if (!files.length) return;
+        attachBtn.textContent = 'Uploading...';
+        attachBtn.disabled = true;
+        var promises = files.map(function(file) {
+          var fd = new FormData();
+          fd.append('file', file);
+          fd.append('task_id', task.id);
+          return fetch('/api/kb', { method: 'POST', headers: { 'Authorization': 'Bearer ' + getToken() }, body: fd });
+        });
+        Promise.all(promises).then(function() {
+          fi.value = '';
+          renderTaskDocs(task, detailEl);
+        });
+      });
+      attachBtn.addEventListener('click', function() { fi.click(); });
+      section.appendChild(fi);
+      pills.appendChild(attachBtn);
+    });
+
+  detailEl.appendChild(section);
+}
+
+// Task card: AI actions section
+function renderTaskAIActions(task, detailEl) {
+  var existing = detailEl.querySelector('.task-ai-section');
+  if (existing) existing.remove();
+
+  var section = document.createElement('div');
+  section.className = 'task-ai-section';
+
+  var label = document.createElement('div');
+  label.className = 'task-ai-label';
+  label.textContent = 'AI Actions';
+  section.appendChild(label);
+
+  var btnRow = document.createElement('div');
+  btnRow.className = 'task-ai-buttons';
+  section.appendChild(btnRow);
+
+  var outputDiv = document.createElement('div');
+  section.appendChild(outputDiv);
+
+  var actions = [
+    { key: 'meeting_prep', label: '📝 Meeting prep' },
+    { key: 'draft_email',  label: '✉️ Draft email' },
+    { key: 'summarise',    label: '📋 Summarise' },
+    { key: 'action_items', label: '✅ Action items' }
+  ];
+
+  actions.forEach(function(action) {
+    var btn = document.createElement('button');
+    btn.className = 'btn-secondary task-ai-btn';
+    btn.textContent = action.label;
+    btn.addEventListener('click', function() {
+      btn.disabled = true;
+      btn.textContent = '⏳ ' + action.label;
+      outputDiv.textContent = '';
+      fetch('/api/tasks/' + task.id + '/ai-action', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ action: action.key })
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        btn.disabled = false;
+        btn.textContent = action.label;
+        outputDiv.textContent = '';
+
+        if (data.error || !data.result) {
+          var errMsg = document.createElement('p');
+          errMsg.style.cssText = 'font-size:11px;color:#ef4444;padding:6px 0';
+          errMsg.textContent = 'AI unavailable, please try again.';
+          outputDiv.appendChild(errMsg);
+          return;
+        }
+
+        var out = document.createElement('div');
+        out.className = 'task-ai-output';
+        var hdr = document.createElement('div');
+        hdr.className = 'task-ai-output-header';
+        hdr.textContent = action.label + ' — generated';
+        var txt = document.createElement('div');
+        txt.className = 'task-ai-output-text';
+        txt.textContent = data.result;
+        var actRow = document.createElement('div');
+        actRow.className = 'task-ai-output-actions';
+
+        var copyBtn = document.createElement('button');
+        copyBtn.className = 'btn-primary task-ai-btn';
+        copyBtn.textContent = '📋 Copy';
+        copyBtn.addEventListener('click', function() {
+          navigator.clipboard.writeText(data.result).then(function() {
+            copyBtn.textContent = '✓ Copied';
+            setTimeout(function() { copyBtn.textContent = '📋 Copy'; }, 1500);
+          });
+        });
+
+        var regenBtn = document.createElement('button');
+        regenBtn.className = 'btn-secondary task-ai-btn';
+        regenBtn.textContent = 'Regenerate';
+        regenBtn.addEventListener('click', function() { btn.click(); });
+
+        actRow.appendChild(copyBtn);
+        actRow.appendChild(regenBtn);
+        out.appendChild(hdr);
+        out.appendChild(txt);
+        out.appendChild(actRow);
+        outputDiv.appendChild(out);
+      }).catch(function() {
+        btn.disabled = false;
+        btn.textContent = action.label;
+        var errMsg = document.createElement('p');
+        errMsg.style.cssText = 'font-size:11px;color:#ef4444;padding:6px 0';
+        errMsg.textContent = 'AI unavailable, please try again.';
+        outputDiv.appendChild(errMsg);
+      });
+    });
+    btnRow.appendChild(btn);
+  });
+
+  detailEl.appendChild(section);
+}
+
+// KB Page
+function renderKBPage() {
+  var container = document.getElementById('page-kb');
+  if (!container) return;
+  container.textContent = '';
+
+  var header = document.createElement('div');
+  header.className = 'page-header';
+  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px';
+  var title = document.createElement('h2');
+  title.textContent = 'Knowledge Base';
+  title.style.cssText = 'font-size:16px;font-weight:700;color:var(--text)';
+  header.appendChild(title);
+
+  var uploadBtn = document.createElement('button');
+  uploadBtn.className = 'btn-primary kb-upload-btn';
+  uploadBtn.textContent = '+ Upload Doc';
+  var fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.multiple = true;
+  fileInput.accept = '.pdf,.docx,.txt,.md,.jpg,.jpeg,.png';
+  fileInput.style.display = 'none';
+  fileInput.addEventListener('change', function() {
+    var files = Array.from(fileInput.files);
+    if (!files.length) return;
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = 'Uploading...';
+    var promises = files.map(function(file) {
+      var fd = new FormData();
+      fd.append('file', file);
+      return fetch('/api/kb', { method: 'POST', headers: { 'Authorization': 'Bearer ' + getToken() }, body: fd });
+    });
+    Promise.all(promises).then(function() {
+      fileInput.value = '';
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = '+ Upload Doc';
+      renderKBPage();
+    });
+  });
+  uploadBtn.addEventListener('click', function() { fileInput.click(); });
+  header.appendChild(fileInput);
+  header.appendChild(uploadBtn);
+  container.appendChild(header);
+
+  fetch('/api/kb', { headers: authHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function(docs) {
+      var globalDocs = docs.filter(function(d) { return !d.task_id; });
+      var taskDocs = docs.filter(function(d) { return d.task_id; });
+
+      var glTitle = document.createElement('div');
+      glTitle.className = 'kb-section-title';
+      glTitle.textContent = 'Global Documents';
+      container.appendChild(glTitle);
+
+      if (!globalDocs.length) {
+        var empty = document.createElement('p');
+        empty.style.cssText = 'font-size:12px;color:var(--text-dim);padding:8px 4px';
+        empty.textContent = 'No global documents yet. Upload docs to give the AI context for all tasks.';
+        container.appendChild(empty);
+      }
+      globalDocs.forEach(function(doc) { container.appendChild(buildKBDocCard(doc)); });
+
+      var tTitle = document.createElement('div');
+      tTitle.className = 'kb-section-title';
+      tTitle.style.marginTop = '16px';
+      tTitle.textContent = 'Task-attached Documents';
+      container.appendChild(tTitle);
+
+      if (!taskDocs.length) {
+        var empty2 = document.createElement('p');
+        empty2.style.cssText = 'font-size:12px;color:var(--text-dim);padding:8px 4px';
+        empty2.textContent = 'No task-attached documents yet. Attach docs from within a task card.';
+        container.appendChild(empty2);
+      }
+      taskDocs.forEach(function(doc) { container.appendChild(buildKBDocCard(doc)); });
+    });
+}
+
+function buildKBDocCard(doc) {
+  var icons = { pdf: '📄', docx: '📝', txt: '📄', md: '📄', jpg: '🖼', jpeg: '🖼', png: '🖼' };
+  var card = document.createElement('div');
+  card.className = 'kb-doc-card';
+
+  var icon = document.createElement('span');
+  icon.className = 'kb-doc-icon';
+  icon.textContent = icons[doc.file_type] || '📄';
+  card.appendChild(icon);
+
+  var info = document.createElement('div');
+  info.className = 'kb-doc-info';
+  var name = document.createElement('div');
+  name.className = 'kb-doc-name';
+  name.textContent = doc.title;
+  info.appendChild(name);
+  var meta = document.createElement('div');
+  meta.className = 'kb-doc-meta';
+  var sizeKB = Math.round(doc.file_size / 1024);
+  var sizeStr = sizeKB > 1024 ? (sizeKB / 1024).toFixed(1) + ' MB' : sizeKB + ' KB';
+  var dateStr = new Date(doc.created_at).toLocaleDateString();
+  meta.textContent = doc.file_type.toUpperCase() + ' · ' + sizeStr + ' · uploaded ' + dateStr;
+  if (!doc.has_text) meta.textContent += ' · no text extracted';
+  info.appendChild(meta);
+  card.appendChild(info);
+
+  var del = document.createElement('button');
+  del.className = 'kb-doc-delete';
+  del.textContent = '✕';
+  del.addEventListener('click', function() {
+    fetch('/api/kb/' + doc.id, { method: 'DELETE', headers: authHeaders() })
+      .then(function() { renderKBPage(); });
+  });
+  card.appendChild(del);
+  return card;
 }
 
 // Event wiring

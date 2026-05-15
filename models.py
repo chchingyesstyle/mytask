@@ -72,3 +72,15 @@ class Task(Base):
     )
     tags = relationship("Tag", secondary=task_tags, lazy="selectin")
     status_rel = relationship("Status", foreign_keys=[status_id], lazy="selectin")
+
+class KBDocument(Base):
+    __tablename__ = "kb_documents"
+    id             = Column(Integer, primary_key=True)
+    title          = Column(String, nullable=False)
+    filename       = Column(String, nullable=False)
+    file_type      = Column(String, nullable=False)
+    file_size      = Column(Integer, nullable=False)
+    extracted_text = Column(Text, nullable=True)
+    task_id        = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True)
+    owner_id       = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at     = Column(DateTime, default=datetime.utcnow)

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -12,9 +13,12 @@ from routers import chat as chat_router
 from routers import tags as tags_router
 from routers import dashboard as dashboard_router
 from routers import statuses as statuses_router
+from routers import kb as kb_router
 
 os.makedirs("data", exist_ok=True)
 os.makedirs("static", exist_ok=True)
+UPLOAD_DIR = Path("./data/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 Base.metadata.create_all(bind=engine)
 
@@ -64,6 +68,20 @@ def _migrate():
                 "WHERE status_id IS NULL"
             ))
             conn.commit()
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS kb_documents (
+                id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                filename TEXT NOT NULL,
+                file_type TEXT NOT NULL,
+                file_size INTEGER NOT NULL,
+                extracted_text TEXT,
+                task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+                owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        conn.commit()
 
 _migrate()
 
@@ -77,6 +95,7 @@ app.include_router(chat_router.router)
 app.include_router(tags_router.router)
 app.include_router(dashboard_router.router)
 app.include_router(statuses_router.router)
+app.include_router(kb_router.router)
 
 @app.on_event("startup")
 def startup():
