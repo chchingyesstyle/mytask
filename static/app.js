@@ -2702,6 +2702,31 @@ function buildTagCreateForm(list) {
   return form;
 }
 
+function downloadKBDoc(doc) {
+  fetch('/api/kb/' + doc.id + '/download', { headers: authHeaders() })
+    .then(function(r) {
+      if (!r.ok) throw new Error('Download failed');
+      return r.blob();
+    })
+    .then(function(blob) {
+      var url = URL.createObjectURL(blob);
+      var viewInBrowser = ['pdf', 'jpg', 'jpeg', 'png'];
+      if (viewInBrowser.indexOf(doc.file_type) !== -1) {
+        window.open(url, '_blank');
+        setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+      } else {
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = doc.title;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    })
+    .catch(function() { showToast('Download failed'); });
+}
+
 // Task card: attached docs section
 function renderTaskDocs(task, detailEl) {
   var existing = detailEl.querySelector('.task-docs-section');
@@ -2726,7 +2751,14 @@ function renderTaskDocs(task, detailEl) {
         var pill = document.createElement('span');
         pill.className = 'task-doc-pill';
         var icons = { pdf: '📄', docx: '📝', txt: '📄', md: '📄', jpg: '🖼', jpeg: '🖼', png: '🖼' };
-        pill.textContent = (icons[doc.file_type] || '📄') + ' ' + doc.title + ' ';
+        var pillLabel = document.createElement('span');
+        pillLabel.textContent = (icons[doc.file_type] || '📄') + ' ' + doc.title;
+        pillLabel.style.cssText = 'cursor:pointer;text-decoration:underline;margin-right:4px';
+        pillLabel.title = 'View / download';
+        (function(d) {
+          pillLabel.addEventListener('click', function(e) { e.stopPropagation(); downloadKBDoc(d); });
+        })(doc);
+        pill.appendChild(pillLabel);
         var del = document.createElement('button');
         del.className = 'task-doc-pill-del';
         del.textContent = '✕';
@@ -3082,6 +3114,15 @@ function buildKBDocCard(doc) {
   if (!doc.has_text) meta.textContent += ' · no text extracted';
   info.appendChild(meta);
   card.appendChild(info);
+
+  var dlBtn = document.createElement('button');
+  dlBtn.className = 'kb-doc-download';
+  dlBtn.textContent = '⬇';
+  dlBtn.title = 'View / download';
+  (function(d) {
+    dlBtn.addEventListener('click', function() { downloadKBDoc(d); });
+  })(doc);
+  card.appendChild(dlBtn);
 
   var del = document.createElement('button');
   del.className = 'kb-doc-delete';

@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
@@ -80,6 +81,36 @@ def list_documents(
     elif global_only:
         q = q.filter(KBDocument.task_id == None)  # noqa: E711
     return [_doc_dict(d) for d in q.order_by(KBDocument.created_at.desc()).all()]
+
+
+_CONTENT_TYPES = {
+    "pdf": "application/pdf",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "txt": "text/plain",
+    "md": "text/markdown",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+}
+
+
+@router.get("/{doc_id}/download")
+def download_document(
+    doc_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    doc = db.query(KBDocument).filter(
+        KBDocument.id == doc_id,
+        KBDocument.owner_id == current_user.id
+    ).first()
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    file_path = UPLOAD_DIR / doc.filename
+    if not file_path.exists():
+        raise HTTPException(404, "File not found on disk")
+    media_type = _CONTENT_TYPES.get(doc.file_type, "application/octet-stream")
+    return FileResponse(file_path, media_type=media_type, filename=doc.title)
 
 
 @router.delete("/{doc_id}", status_code=204)

@@ -676,6 +676,9 @@ body.light .task-table tbody tr:hover { background:rgba(0,0,0,.02); }
 .kb-doc-name { font-size:12px; font-weight:600; color:var(--text); white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis; }
 .kb-doc-meta { font-size:10px; color:var(--text-dim); margin-top:1px; }
+.kb-doc-download { background:none; border:none; color:var(--text-dim); cursor:pointer;
+  font-size:13px; padding:2px 4px; margin-right:2px; }
+.kb-doc-download:hover { color:var(--accent); }
 .kb-doc-delete { background:none; border:none; color:var(--text-dim); cursor:pointer;
   font-size:12px; padding:2px 4px; }
 .kb-doc-delete:hover { color:#ef4444; }
