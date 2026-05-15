@@ -290,7 +290,7 @@ async function loadTasks() {
   allTasks = await resp.json();
   var _pid = activeFilter.indexOf('project:') === 0 ? parseInt(activeFilter.split(':')[1]) : undefined;
   await loadStatuses(_pid);
-  renderTasks();
+  renderCurrentView();
   updateOverdueBadge();
   loadDashboard();
 }
@@ -656,7 +656,10 @@ function renderBoard() {
         fetch('/api/tasks/' + taskId, {
           method: 'PUT', headers: authHeaders(),
           body: JSON.stringify({ status_id: status.id }),
-        }).then(function() { loadTasks(); });
+        }).then(function(r) {
+          if (!r.ok) alert('Failed to move task. Please try again.');
+          loadTasks();
+        }).catch(function() { loadTasks(); });
       }
     });
 
@@ -665,7 +668,8 @@ function renderBoard() {
     addBtn.className = 'board-add-card-btn';
     addBtn.textContent = '+ Add card';
     addBtn.addEventListener('click', function() {
-      openNewTaskModal(null, null, status.id);
+      var activePid = activeFilter.indexOf('project:') === 0 ? parseInt(activeFilter.split(':')[1]) : null;
+      openNewTaskModal(null, activePid, status.id);
     });
     col.appendChild(addBtn);
 
@@ -733,10 +737,16 @@ function showAddStatusForm(container, triggerBtn) {
     var name = nameInp.value.trim();
     if (!name) return;
     var pid = parseInt(activeFilter.split(':')[1]);
-    await fetch('/api/statuses', {
+    if (isNaN(pid)) return;
+    var resp = await fetch('/api/statuses', {
       method: 'POST', headers: authHeaders(),
       body: JSON.stringify({ name: name, color: colorInp.value, project_id: pid }),
     });
+    if (!resp.ok) {
+      var err = await resp.json().catch(function() { return {}; });
+      alert(err.detail || 'Failed to create status');
+      return;
+    }
     await loadStatuses(pid);
     await loadTasks();
   }
