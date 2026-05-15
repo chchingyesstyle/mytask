@@ -1,6 +1,6 @@
 import os
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from database import engine, Base
 from seed import seed_admin
@@ -52,3 +52,8 @@ def root():
 @app.get("/admin")
 def admin_page():
     return FileResponse("static/admin.html")
+
+@app.get("/api/info")
+def api_info():
+    from ai.agent import MODEL
+    return JSONResponse({"model": MODEL})

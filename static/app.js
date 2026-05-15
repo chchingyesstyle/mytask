@@ -57,6 +57,10 @@ async function initApp() {
     if (currentUser.role === 'admin') {
       document.getElementById('admin-link').style.display = 'inline';
     }
+    fetch('/api/info').then(function(r) { return r.json(); }).then(function(d) {
+      var el = document.getElementById('chat-model-label');
+      if (el) el.textContent = d.model || '';
+    });
     await loadProjects();
     await loadTags();
     await loadTasks();
