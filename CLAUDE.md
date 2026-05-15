@@ -56,7 +56,7 @@ python3 -m pytest tests/test_tasks.py -v
 - `hideTaskEditForm(taskId)` — removes the form element and resets `editingTaskId`
 - `saveTaskEdit(taskId, data)` — `PUT /api/tasks/{id}`; on success calls `loadTasks()`; on failure logs to console and leaves form open
 - `showStepEditRow(child, originalRow, parentId, container)` — hides original row, inserts inline edit inputs; Enter saves, Escape cancels; enforces one-at-a-time via `editingStepId`
-- `saveStepEdit(...)` — `PUT /api/tasks/{id}` with title + due_date; on success calls `loadTasks()` only (not a redundant `loadAndRenderSubtasks`)
+- `saveStepEdit(...)` — `PUT /api/tasks/{id}` with title + due_date + notes; on success calls `loadTasks()` only (not a redundant `loadAndRenderSubtasks`)
 - Only one edit form (task or step) may be open at a time; opening a second collapses the first
 - `body { height: 100vh; overflow: hidden; }` in `style.css` is required for the main split-panel layout; `admin.html` overrides this with `<style>body { overflow-y: auto; height: auto; }</style>` in its own `<head>` to allow scrolling
 

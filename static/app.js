@@ -638,8 +638,11 @@ function showStepEditRow(child, originalRow, parentId, container) {
   originalRow.style.display = 'none';
 
   var editRow = document.createElement('div');
-  editRow.className = 'subtask-row';
   editRow.id = 'step-edit-' + child.id;
+  editRow.style.cssText = 'display:flex;flex-direction:column;gap:4px;margin-bottom:4px';
+
+  var topRow = document.createElement('div');
+  topRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px';
 
   var titleInp = document.createElement('input');
   titleInp.type = 'text';
@@ -661,6 +664,11 @@ function showStepEditRow(child, originalRow, parentId, container) {
   saveBtn.textContent = '✓';
   saveBtn.style.cssText = 'font-size:10px;padding:2px 7px;flex-shrink:0';
 
+  var notesInp = document.createElement('textarea');
+  notesInp.value = child.notes || '';
+  notesInp.placeholder = 'Notes (optional)';
+  notesInp.style.cssText = 'font-size:11px;padding:4px 6px;resize:vertical;min-height:40px;font-family:inherit;width:100%;box-sizing:border-box';
+
   function doCancel() {
     editingStepId = null;
     editRow.remove();
@@ -670,6 +678,7 @@ function showStepEditRow(child, originalRow, parentId, container) {
   function doSave() {
     if (!titleInp.value.trim()) return;
     saveStepEdit(child.id, titleInp.value.trim(), dateInp.value || null,
+                 notesInp.value.trim() || null,
                  parentId, container, editRow, originalRow);
   }
 
@@ -680,22 +689,25 @@ function showStepEditRow(child, originalRow, parentId, container) {
     if (e.key === 'Enter') doSave();
     if (e.key === 'Escape') doCancel();
   });
+  notesInp.addEventListener('keydown', function(e) { e.stopPropagation(); if (e.key === 'Escape') doCancel(); });
 
-  editRow.appendChild(titleInp);
-  editRow.appendChild(dateInp);
-  editRow.appendChild(cancelBtn);
-  editRow.appendChild(saveBtn);
+  topRow.appendChild(titleInp);
+  topRow.appendChild(dateInp);
+  topRow.appendChild(cancelBtn);
+  topRow.appendChild(saveBtn);
+  editRow.appendChild(topRow);
+  editRow.appendChild(notesInp);
 
   container.insertBefore(editRow, originalRow.nextSibling);
   titleInp.focus();
   titleInp.select();
 }
 
-async function saveStepEdit(stepId, title, dueDate, parentId, container, editRow, originalRow) {
+async function saveStepEdit(stepId, title, dueDate, notes, parentId, container, editRow, originalRow) {
   var resp = await fetch('/api/tasks/' + stepId, {
     method: 'PUT',
     headers: authHeaders(),
-    body: JSON.stringify({ title: title, due_date: dueDate }),
+    body: JSON.stringify({ title: title, due_date: dueDate, notes: notes }),
   });
   if (!resp.ok) { console.warn('Save step edit failed:', resp.status); return; }
   editingStepId = null;
