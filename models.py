@@ -28,6 +28,7 @@ class Project(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     owner = relationship("User", back_populates="projects")
     tasks = relationship("Task", back_populates="project")
+    statuses = relationship("Status", backref="project", order_by="Status.position", cascade="all, delete-orphan")
 
 class Tag(Base):
     __tablename__ = "tags"

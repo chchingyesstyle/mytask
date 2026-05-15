@@ -2,7 +2,9 @@ def test_create_project(admin_headers):
     client, headers = admin_headers
     resp = client.post("/api/projects", json={"name": "Server Infra"}, headers=headers)
     assert resp.status_code == 201
-    assert resp.json()["name"] == "Server Infra"
+    data = resp.json()
+    assert data["name"] == "Server Infra"
+    assert len(data["statuses"]) == 3
 
 def test_list_projects_empty(admin_headers):
     client, headers = admin_headers

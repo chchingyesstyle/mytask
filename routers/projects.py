@@ -34,7 +34,12 @@ def create_project(req: ProjectCreate, db: Session = Depends(get_db), current_us
         ))
     db.commit()
     db.refresh(project)
-    return {"id": project.id, "name": project.name, "owner_id": project.owner_id}
+    return {
+        "id": project.id,
+        "name": project.name,
+        "owner_id": project.owner_id,
+        "statuses": [{"id": s.id, "name": s.name, "color": s.color, "position": s.position} for s in project.statuses],
+    }
 
 @router.delete("/{project_id}", status_code=204)
 def delete_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
