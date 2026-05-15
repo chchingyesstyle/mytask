@@ -734,22 +734,25 @@ function renderTimeline() {
   if (!rowsEl || !rangeLabel) return;
   while (rowsEl.firstChild) rowsEl.removeChild(rowsEl.firstChild);
 
-  var tasksWithDate = filteredTasks().filter(function(t) { return t.due_date; });
-  var tasksNoDate   = filteredTasks().filter(function(t) { return !t.due_date; });
+  var tasksWithDate = filteredTasks().filter(function(t) { return t.start_date || t.due_date; });
+  var tasksNoDate   = filteredTasks().filter(function(t) { return !t.start_date && !t.due_date; });
 
   if (tasksWithDate.length === 0 && tasksNoDate.length === 0) {
     var empty = document.createElement('div');
     empty.className = 'tl-empty';
-    empty.textContent = 'No tasks with due dates yet';
+    empty.textContent = 'No tasks with dates yet';
     rowsEl.appendChild(empty);
     rangeLabel.textContent = '';
     return;
   }
 
-  // Compute date window
-  var dates = tasksWithDate.length > 0
-    ? tasksWithDate.map(function(t) { return new Date(t.due_date + 'T00:00:00'); })
-    : [new Date()];
+  // Compute date window from all start and due dates
+  var dates = [];
+  tasksWithDate.forEach(function(t) {
+    if (t.start_date) dates.push(new Date(t.start_date + 'T00:00:00'));
+    if (t.due_date)   dates.push(new Date(t.due_date   + 'T00:00:00'));
+  });
+  if (!dates.length) dates = [new Date()];
   var minDate = new Date(Math.min.apply(null, dates));
   var maxDate = new Date(Math.max.apply(null, dates));
 
@@ -795,13 +798,19 @@ function renderTimeline() {
     barArea.className = 'tl-row-bar-area';
     var bar = document.createElement('div');
     bar.className = 'gantt-bar priority-' + t.priority;
-    var leftPct = dateToPercent(t.due_date);
-    var widthPct = (1 / windowDays) * 100;
-    bar.style.left = leftPct + '%';
+    var barStart = t.start_date || t.due_date;
+    var barEnd   = t.due_date   || t.start_date;
+    var leftPct  = dateToPercent(barStart);
+    var rightPct = dateToPercent(barEnd);
+    var widthPct = Math.max((1 / windowDays) * 100, rightPct - leftPct + (1 / windowDays) * 100);
+    bar.style.left  = leftPct + '%';
     bar.style.width = widthPct + '%';
-    bar.title = t.title + ' · due ' + t.due_date;
+    var titleParts = [t.title];
+    if (t.start_date) titleParts.push('start ' + t.start_date);
+    if (t.due_date)   titleParts.push('due ' + t.due_date);
+    bar.title = titleParts.join(' · ');
 
-    // Drag to change due date
+    // Drag to shift bar (moves both start_date and due_date together)
     var dragStartX = null;
     var origLeft = null;
     bar.addEventListener('mousedown', function(e) {
@@ -822,12 +831,20 @@ function renderTimeline() {
         var dx = ev.clientX - dragStartX;
         var daysDelta = Math.round((dx / barAreaRect.width) * windowDays);
         if (daysDelta !== 0) {
-          var origDate = new Date(t.due_date + 'T00:00:00');
-          origDate.setDate(origDate.getDate() + daysDelta);
-          var newDate = origDate.toISOString().split('T')[0];
+          var updates = {};
+          if (t.due_date) {
+            var d1 = new Date(t.due_date + 'T00:00:00');
+            d1.setDate(d1.getDate() + daysDelta);
+            updates.due_date = d1.toISOString().split('T')[0];
+          }
+          if (t.start_date) {
+            var d2 = new Date(t.start_date + 'T00:00:00');
+            d2.setDate(d2.getDate() + daysDelta);
+            updates.start_date = d2.toISOString().split('T')[0];
+          }
           fetch('/api/tasks/' + t.id, {
             method: 'PUT', headers: authHeaders(),
-            body: JSON.stringify({ due_date: newDate }),
+            body: JSON.stringify(updates),
           }).then(function() { loadTasks(); });
         } else {
           bar.style.left = leftPct + '%';
@@ -846,7 +863,7 @@ function renderTimeline() {
   if (tasksNoDate.length > 0) {
     var sep = document.createElement('div');
     sep.className = 'tl-separator';
-    sep.textContent = 'No due date (' + tasksNoDate.length + ')';
+    sep.textContent = 'No date set (' + tasksNoDate.length + ')';
     rowsEl.appendChild(sep);
     tasksNoDate.forEach(function(t) {
       var row = document.createElement('div');
