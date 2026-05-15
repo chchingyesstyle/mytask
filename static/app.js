@@ -167,6 +167,7 @@ function renderProjectFilters() {
   allProjects.forEach(function(p) {
     var btn = document.createElement('button');
     btn.className = 'filter-btn';
+    btn.dataset.projectId = p.id;
     btn.textContent = p.name;
     btn.addEventListener('click', function() { setFilter('project:' + p.id, btn); });
     container.appendChild(btn);
@@ -338,15 +339,8 @@ function setFilter(filter, btn) {
   } else {
     loadStatuses().then(function() { renderCurrentView(); });
   }
-  // Update board tab disabled state
-  var boardTab = document.getElementById('view-tab-board');
-  if (boardTab) {
-    var isProjectFilter = filter.indexOf('project:') === 0;
-    boardTab.disabled = !isProjectFilter;
-    boardTab.title = isProjectFilter ? '' : 'Select a project in the filter bar to enable Board view';
-    // If board is active and we lose project filter, switch back to list
-    if (!isProjectFilter && currentView === 'board') switchView('list');
-  }
+  // If board is active and we lose project filter, switch back to list
+  if (filter.indexOf('project:') !== 0 && currentView === 'board') switchView('list');
 }
 
 function filteredTasks() {
@@ -1581,6 +1575,17 @@ function buildProjectCard(p, list) {
   var chevron = document.createElement('span');
   chevron.className = 'proj-card-chevron';
   chevron.textContent = isExpanded ? '↑' : '↓';
+  var viewTasksBtn = document.createElement('button');
+  viewTasksBtn.className = 'proj-card-view-tasks';
+  viewTasksBtn.textContent = 'View Tasks';
+  viewTasksBtn.title = 'Go to Tasks filtered by this project';
+  viewTasksBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    navigateTo('tasks');
+    var filterBtn = document.querySelector('#project-filters [data-project-id="' + p.id + '"]');
+    setFilter('project:' + p.id, filterBtn);
+  });
+
   var delBtn = document.createElement('button');
   delBtn.className = 'proj-card-del';
   delBtn.textContent = '✕';
@@ -1602,6 +1607,7 @@ function buildProjectCard(p, list) {
   hdr.appendChild(nameEl);
   hdr.appendChild(countEl);
   hdr.appendChild(chevron);
+  hdr.appendChild(viewTasksBtn);
   hdr.appendChild(delBtn);
   hdr.addEventListener('click', function() {
     expandedProjectId = isExpanded ? null : p.id;

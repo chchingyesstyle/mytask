@@ -565,6 +565,8 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
 .proj-card-name { font-weight: 600; font-size: 13px; flex: 1; }
 .proj-card-count { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
 .proj-card-chevron { font-size: 11px; color: var(--text-dim); width: 14px; text-align: center; }
+.proj-card-view-tasks { background: none; border: 1px solid var(--border); color: var(--text-dim); font-size: 11px; padding: 2px 7px; line-height: 1; cursor: pointer; border-radius: var(--r); white-space: nowrap; }
+.proj-card-view-tasks:hover { color: var(--accent); border-color: var(--accent); }
 .proj-card-del { background: none; border: none; color: var(--text-dim); font-size: 13px; padding: 2px 6px; line-height: 1; cursor: pointer; border-radius: var(--r); }
 .proj-card-del:hover { color: var(--danger); opacity: 1; }
 .proj-status-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 10px; }
