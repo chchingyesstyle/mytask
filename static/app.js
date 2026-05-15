@@ -1,3 +1,9 @@
+(function() {
+  if (localStorage.getItem('theme') === 'light') {
+    document.body.classList.add('light');
+  }
+})();
+
 // State
 let currentUser = null;
 let allTasks = [];
@@ -22,6 +28,17 @@ let projectStatusMap = {};
 function getToken() { return localStorage.getItem('mytask_token'); }
 function authHeaders() {
   return { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' };
+}
+
+function applyTheme(theme) {
+  document.body.classList.toggle('light', theme === 'light');
+  localStorage.setItem('theme', theme);
+  var isDark = theme !== 'light';
+  var label = isDark ? '☀️ Light' : '🌙 Dark';
+  var t1 = document.getElementById('theme-toggle');
+  var t2 = document.getElementById('theme-toggle-drawer');
+  if (t1) t1.textContent = label;
+  if (t2) t2.textContent = label;
 }
 
 async function login() {
@@ -79,6 +96,7 @@ async function initApp() {
     currentCalendarMonth = { year: now.getFullYear(), month: now.getMonth() };
     navigateTo(currentPage);
     addAiMessage('Hello ' + currentUser.username + '! I am your AI assistant. Tell me what tasks you need help with.');
+    applyTheme(localStorage.getItem('theme') || 'dark');
   } catch (e) { showLogin(); }
 }
 
@@ -2208,4 +2226,12 @@ document.addEventListener('DOMContentLoaded', function() {
     currentTimelineOffset += 7;
     renderTimeline();
   });
+  function onThemeToggle() {
+    var current = localStorage.getItem('theme') || 'dark';
+    applyTheme(current === 'light' ? 'dark' : 'light');
+  }
+  var tt = document.getElementById('theme-toggle');
+  var ttd = document.getElementById('theme-toggle-drawer');
+  if (tt) tt.addEventListener('click', onThemeToggle);
+  if (ttd) ttd.addEventListener('click', onThemeToggle);
 });
