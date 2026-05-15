@@ -11,18 +11,22 @@ def test_execute_tool_create_task(db_session):
 
 def test_execute_tool_update_task_by_title(db_session):
     from ai.agent import execute_tool
-    from models import User, Task
+    from models import User, Task, Status
     from auth import hash_password
     user = User(username="u2", password_hash=hash_password("p"), role="user")
     db_session.add(user)
     db_session.commit()
-    task = Task(title="DB Migration", status="todo", priority="high", owner_id=user.id)
+    # Seed an "In Progress" status for the test DB
+    in_progress = Status(name="In Progress", color="#4a90d9", position=2, project_id=None)
+    db_session.add(in_progress)
+    db_session.commit()
+    task = Task(title="DB Migration", priority="high", owner_id=user.id)
     db_session.add(task)
     db_session.commit()
-    result = execute_tool("update_task", {"title_search": "DB Migration", "status": "in-progress"}, db_session, user.id)
+    result = execute_tool("update_task", {"title_search": "DB Migration", "status_name": "In Progress"}, db_session, user.id)
     assert "DB Migration" in result
     db_session.refresh(task)
-    assert task.status == "in-progress"
+    assert task.status_id == in_progress.id
 
 def test_execute_tool_delete_task(db_session):
     from ai.agent import execute_tool
@@ -53,10 +57,10 @@ def test_execute_tool_list_tasks(db_session):
 def test_build_system_prompt_includes_tasks():
     from datetime import datetime
     from ai.agent import build_system_prompt
-    tasks = [{"id": 1, "title": "DB Migrate", "status": "todo", "priority": "high", "due_date": None, "project_name": None}]
+    tasks = [{"id": 1, "title": "DB Migrate", "status_name": "Todo", "priority": "high", "due_date": None, "project_name": None}]
     prompt = build_system_prompt(tasks)
     assert "DB Migrate" in prompt
-    assert "todo" in prompt
+    assert "Todo" in prompt
     assert datetime.utcnow().strftime("%Y-%m-%d") in prompt
 
 def test_create_subtask_tool(db_session):

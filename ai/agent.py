@@ -19,7 +19,7 @@ TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "status": {"type": "string", "enum": ["todo", "in-progress", "done"]},
+                    "status": {"type": "string", "description": "Filter by status name, e.g. 'Todo', 'In Progress', 'Done'"},
                     "priority": {"type": "string", "enum": ["high", "medium", "low"]},
                 },
             },
@@ -34,7 +34,7 @@ TOOLS = [
                 "type": "object",
                 "properties": {
                     "title": {"type": "string"},
-                    "status": {"type": "string", "enum": ["todo", "in-progress", "done"]},
+                    "status_name": {"type": "string", "description": "Status name, e.g. 'Todo', 'In Progress', 'Done'. Defaults to Todo."},
                     "priority": {"type": "string", "enum": ["high", "medium", "low"]},
                     "due_date": {"type": "string", "description": "ISO date YYYY-MM-DD, optional"},
                     "notes": {"type": "string"},
@@ -53,7 +53,7 @@ TOOLS = [
                 "properties": {
                     "task_id": {"type": "integer"},
                     "title_search": {"type": "string", "description": "Partial title if id unknown"},
-                    "status": {"type": "string", "enum": ["todo", "in-progress", "done"]},
+                    "status_name": {"type": "string", "description": "New status name, e.g. 'Todo', 'In Progress', 'Done'"},
                     "priority": {"type": "string", "enum": ["high", "medium", "low"]},
                     "due_date": {"type": "string"},
                     "notes": {"type": "string"},
@@ -127,7 +127,7 @@ TOOLS = [
 
 def build_system_prompt(tasks: list[dict]) -> str:
     task_lines = "\n".join(
-        "- ID:{} [{}] [{}] {}".format(t["id"], t["status"], t["priority"], t["title"])
+        "- ID:{} [{}] [{}] {}".format(t["id"], t.get("status_name", "Todo"), t["priority"], t["title"])
         + (" (due {})".format(t["due_date"]) if t.get("due_date") else "")
         + (" [project: {}]".format(t["project_name"]) if t.get("project_name") else "")
         + (" [tags: {}]".format(", ".join(tg["name"] for tg in t.get("tags", []))) if t.get("tags") else "")
@@ -164,14 +164,22 @@ def execute_tool(name: str, args: dict, db: Session, owner_id: int) -> str:
     if name == "list_tasks":
         query = db.query(models.Task).filter(models.Task.owner_id == owner_id)
         if args.get("status"):
-            query = query.filter(models.Task.status == args["status"])
+            status_obj = db.query(models.Status).filter(
+                models.Status.name.ilike(args["status"])
+            ).first()
+            if status_obj:
+                query = query.filter(models.Task.status_id == status_obj.id)
         if args.get("priority"):
             query = query.filter(models.Task.priority == args["priority"])
         tasks = query.all()
         if not tasks:
             return "No tasks found matching those filters."
         return "\n".join(
-            "- [{}] [{}] {}".format(t.status, t.priority, t.title)
+            "- [{}] [{}] {}".format(
+                t.status_rel.name if t.status_rel else "Todo",
+                t.priority,
+                t.title,
+            )
             + (" (due {})".format(t.due_date) if t.due_date else "")
             for t in tasks
         )
@@ -183,13 +191,28 @@ def execute_tool(name: str, args: dict, db: Session, owner_id: int) -> str:
                 due = date.fromisoformat(args["due_date"])
             except ValueError:
                 return "Invalid due_date '{}', expected YYYY-MM-DD.".format(args["due_date"])
+        status_id = None
+        if args.get("status_name"):
+            status_obj = db.query(models.Status).filter(
+                models.Status.name.ilike(args["status_name"]),
+                models.Status.project_id == None,  # noqa: E711
+            ).first()
+            if status_obj:
+                status_id = status_obj.id
+        if status_id is None:
+            # Default to first status in default set
+            first = db.query(models.Status).filter(
+                models.Status.project_id == None  # noqa: E711
+            ).order_by(models.Status.position).first()
+            if first:
+                status_id = first.id
         task = models.Task(
             title=args["title"],
-            status=args.get("status", "todo"),
             priority=args.get("priority", "medium"),
             due_date=due,
             notes=args.get("notes"),
             owner_id=owner_id,
+            status_id=status_id,
         )
         db.add(task)
         db.commit()
@@ -202,9 +225,15 @@ def execute_tool(name: str, args: dict, db: Session, owner_id: int) -> str:
             return "Multiple tasks match '{}', please specify task_id.".format(args.get("title_search"))
         if not task:
             return "Task not found."
-        for field in ("status", "priority", "notes"):
+        for field in ("priority", "notes"):
             if args.get(field) is not None:
                 setattr(task, field, args[field])
+        if args.get("status_name") is not None:
+            status_obj = db.query(models.Status).filter(
+                models.Status.name.ilike(args["status_name"])
+            ).first()
+            if status_obj:
+                task.status_id = status_obj.id
         if args.get("due_date"):
             try:
                 task.due_date = date.fromisoformat(args["due_date"])
@@ -238,14 +267,18 @@ def execute_tool(name: str, args: dict, db: Session, owner_id: int) -> str:
                 due = date.fromisoformat(args["due_date"])
             except ValueError:
                 return "Invalid due_date '{}', expected YYYY-MM-DD.".format(args["due_date"])
+        # Inherit status_id from parent's project default, or use first global default
+        default_status = db.query(models.Status).filter(
+            models.Status.project_id == None  # noqa: E711
+        ).order_by(models.Status.position).first()
         task = models.Task(
             title=args["title"],
-            status="todo",
             priority=args.get("priority") or parent.priority,
             due_date=due,
             notes=args.get("notes"),
             owner_id=owner_id,
             parent_id=args["parent_id"],
+            status_id=default_status.id if default_status else None,
         )
         db.add(task)
         db.commit()
