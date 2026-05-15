@@ -2812,72 +2812,129 @@ function renderTaskAIActions(task, detailEl) {
     { key: 'action_items', label: '✅ Action items' }
   ];
 
-  actions.forEach(function(action) {
-    var btn = document.createElement('button');
-    btn.className = 'btn-secondary task-ai-btn';
-    btn.textContent = action.label;
-    btn.addEventListener('click', function() {
-      btn.disabled = true;
-      btn.textContent = '⏳ ' + action.label;
-      outputDiv.textContent = '';
+  // Shared: render an AI result block with Copy, Regenerate, and Follow-up reply input
+  function renderAIResult(result, headerLabel, onRegen) {
+    outputDiv.textContent = '';
+    var out = document.createElement('div');
+    out.className = 'task-ai-output';
+
+    var hdr = document.createElement('div');
+    hdr.className = 'task-ai-output-header';
+    hdr.textContent = headerLabel + ' — generated';
+
+    var txt = document.createElement('div');
+    txt.className = 'task-ai-output-text';
+    txt.textContent = result;
+
+    var actRow = document.createElement('div');
+    actRow.className = 'task-ai-output-actions';
+
+    var copyBtn = document.createElement('button');
+    copyBtn.className = 'btn-primary task-ai-btn';
+    copyBtn.textContent = '📋 Copy';
+    copyBtn.addEventListener('click', function() {
+      navigator.clipboard.writeText(result).then(function() {
+        copyBtn.textContent = '✓ Copied';
+        setTimeout(function() { copyBtn.textContent = '📋 Copy'; }, 1500);
+      });
+    });
+
+    var regenBtn = document.createElement('button');
+    regenBtn.className = 'btn-secondary task-ai-btn';
+    regenBtn.textContent = 'Regenerate';
+    regenBtn.addEventListener('click', onRegen);
+
+    actRow.appendChild(copyBtn);
+    actRow.appendChild(regenBtn);
+
+    // Follow-up / feedback row
+    var replyRow = document.createElement('div');
+    replyRow.style.cssText = 'display:flex;gap:6px;margin-top:8px;border-top:1px solid var(--border);padding-top:8px';
+    var replyInput = document.createElement('textarea');
+    replyInput.placeholder = 'Give feedback or ask a follow-up…';
+    replyInput.rows = 2;
+    replyInput.style.cssText = 'flex:1;font-size:11px;font-family:inherit;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:5px 8px;resize:vertical';
+    var replyBtn = document.createElement('button');
+    replyBtn.className = 'btn-primary task-ai-btn';
+    replyBtn.style.alignSelf = 'flex-end';
+    replyBtn.textContent = '↩ Reply';
+
+    function sendReply() {
+      var feedback = replyInput.value.trim();
+      if (!feedback) return;
+      replyBtn.disabled = true;
+      replyBtn.textContent = '⏳';
+      var composedPrompt = 'Previous AI response:\n---\n' + result + '\n---\n\nMy feedback: ' + feedback + '\n\nPlease revise your response based on this feedback.';
       fetch('/api/tasks/' + task.id + '/ai-action', {
         method: 'POST',
         headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
-        body: JSON.stringify({ action: action.key })
+        body: JSON.stringify({ action: 'custom', custom_prompt: composedPrompt })
       }).then(function(r) { return r.json(); }).then(function(data) {
-        btn.disabled = false;
-        btn.textContent = action.label;
-        outputDiv.textContent = '';
-
+        replyBtn.disabled = false;
+        replyBtn.textContent = '↩ Reply';
         if (data.error || !data.result) {
-          var errMsg = document.createElement('p');
-          errMsg.style.cssText = 'font-size:11px;color:#ef4444;padding:6px 0';
-          errMsg.textContent = 'AI unavailable, please try again.';
-          outputDiv.appendChild(errMsg);
+          replyInput.style.borderColor = '#ef4444';
+          replyInput.placeholder = 'AI unavailable, please try again.';
           return;
         }
-
-        var out = document.createElement('div');
-        out.className = 'task-ai-output';
-        var hdr = document.createElement('div');
-        hdr.className = 'task-ai-output-header';
-        hdr.textContent = action.label + ' — generated';
-        var txt = document.createElement('div');
-        txt.className = 'task-ai-output-text';
-        txt.textContent = data.result;
-        var actRow = document.createElement('div');
-        actRow.className = 'task-ai-output-actions';
-
-        var copyBtn = document.createElement('button');
-        copyBtn.className = 'btn-primary task-ai-btn';
-        copyBtn.textContent = '📋 Copy';
-        copyBtn.addEventListener('click', function() {
-          navigator.clipboard.writeText(data.result).then(function() {
-            copyBtn.textContent = '✓ Copied';
-            setTimeout(function() { copyBtn.textContent = '📋 Copy'; }, 1500);
-          });
-        });
-
-        var regenBtn = document.createElement('button');
-        regenBtn.className = 'btn-secondary task-ai-btn';
-        regenBtn.textContent = 'Regenerate';
-        regenBtn.addEventListener('click', function() { btn.click(); });
-
-        actRow.appendChild(copyBtn);
-        actRow.appendChild(regenBtn);
-        out.appendChild(hdr);
-        out.appendChild(txt);
-        out.appendChild(actRow);
-        outputDiv.appendChild(out);
+        renderAIResult(data.result, headerLabel + ' (revised)', onRegen);
       }).catch(function() {
-        btn.disabled = false;
-        btn.textContent = action.label;
+        replyBtn.disabled = false;
+        replyBtn.textContent = '↩ Reply';
+        replyInput.style.borderColor = '#ef4444';
+      });
+    }
+
+    replyBtn.addEventListener('click', sendReply);
+    replyInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) sendReply();
+    });
+
+    replyRow.appendChild(replyInput);
+    replyRow.appendChild(replyBtn);
+
+    out.appendChild(hdr);
+    out.appendChild(txt);
+    out.appendChild(actRow);
+    out.appendChild(replyRow);
+    outputDiv.appendChild(out);
+  }
+
+  function runAIAction(actionKey, actionLabel, btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ ' + actionLabel;
+    outputDiv.textContent = '';
+    fetch('/api/tasks/' + task.id + '/ai-action', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+      body: JSON.stringify({ action: actionKey })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      btn.disabled = false;
+      btn.textContent = actionLabel;
+      if (data.error || !data.result) {
+        outputDiv.textContent = '';
         var errMsg = document.createElement('p');
         errMsg.style.cssText = 'font-size:11px;color:#ef4444;padding:6px 0';
         errMsg.textContent = 'AI unavailable, please try again.';
         outputDiv.appendChild(errMsg);
-      });
+        return;
+      }
+      renderAIResult(data.result, actionLabel, function() { runAIAction(actionKey, actionLabel, btn); });
+    }).catch(function() {
+      btn.disabled = false;
+      btn.textContent = actionLabel;
+      var errMsg = document.createElement('p');
+      errMsg.style.cssText = 'font-size:11px;color:#ef4444;padding:6px 0';
+      errMsg.textContent = 'AI unavailable, please try again.';
+      outputDiv.appendChild(errMsg);
     });
+  }
+
+  actions.forEach(function(action) {
+    var btn = document.createElement('button');
+    btn.className = 'btn-secondary task-ai-btn';
+    btn.textContent = action.label;
+    btn.addEventListener('click', function() { runAIAction(action.key, action.label, btn); });
     btnRow.appendChild(btn);
   });
 
@@ -2894,43 +2951,15 @@ function renderTaskAIActions(task, detailEl) {
     }).then(function(r) { return r.json(); }).then(function(data) {
       askBtn.disabled = false;
       askBtn.textContent = '💬 Ask';
-      outputDiv.textContent = '';
       if (data.error || !data.result) {
+        outputDiv.textContent = '';
         var errMsg = document.createElement('p');
         errMsg.style.cssText = 'font-size:11px;color:#ef4444;padding:6px 0';
         errMsg.textContent = 'AI unavailable, please try again.';
         outputDiv.appendChild(errMsg);
         return;
       }
-      var out = document.createElement('div');
-      out.className = 'task-ai-output';
-      var hdr = document.createElement('div');
-      hdr.className = 'task-ai-output-header';
-      hdr.textContent = '💬 Custom — generated';
-      var txt = document.createElement('div');
-      txt.className = 'task-ai-output-text';
-      txt.textContent = data.result;
-      var actRow = document.createElement('div');
-      actRow.className = 'task-ai-output-actions';
-      var copyBtn2 = document.createElement('button');
-      copyBtn2.className = 'btn-primary task-ai-btn';
-      copyBtn2.textContent = '📋 Copy';
-      copyBtn2.addEventListener('click', function() {
-        navigator.clipboard.writeText(data.result).then(function() {
-          copyBtn2.textContent = '✓ Copied';
-          setTimeout(function() { copyBtn2.textContent = '📋 Copy'; }, 1500);
-        });
-      });
-      var regenBtn2 = document.createElement('button');
-      regenBtn2.className = 'btn-secondary task-ai-btn';
-      regenBtn2.textContent = 'Regenerate';
-      regenBtn2.addEventListener('click', runCustomAsk);
-      actRow.appendChild(copyBtn2);
-      actRow.appendChild(regenBtn2);
-      out.appendChild(hdr);
-      out.appendChild(txt);
-      out.appendChild(actRow);
-      outputDiv.appendChild(out);
+      renderAIResult(data.result, '💬 Custom', runCustomAsk);
     }).catch(function() {
       askBtn.disabled = false;
       askBtn.textContent = '💬 Ask';
