@@ -827,12 +827,11 @@ function renderBoard() {
 
   var tasks = filteredTasks();
 
-  allStatuses.forEach(function(status) {
+  function buildBoardColumn(status, colTasks, showAddCard) {
     var col = document.createElement('div');
     col.className = 'board-column';
     col.dataset.statusId = status.id;
 
-    // Column header
     var header = document.createElement('div');
     header.className = 'board-column-header';
     var dot = document.createElement('span');
@@ -843,24 +842,18 @@ function renderBoard() {
     nameEl.textContent = status.name;
     var countEl = document.createElement('span');
     countEl.className = 'board-column-count';
-    var colTasks = tasks.filter(function(t) { return t.status_id === status.id; });
     countEl.textContent = colTasks.length;
     header.appendChild(dot);
     header.appendChild(nameEl);
     header.appendChild(countEl);
     col.appendChild(header);
 
-    // Cards area
     var cards = document.createElement('div');
     cards.className = 'board-column-cards';
     colTasks.forEach(function(t) { cards.appendChild(buildBoardCard(t)); });
     col.appendChild(cards);
 
-    // Drag-and-drop on column
-    col.addEventListener('dragover', function(e) {
-      e.preventDefault();
-      col.classList.add('drag-over');
-    });
+    col.addEventListener('dragover', function(e) { e.preventDefault(); col.classList.add('drag-over'); });
     col.addEventListener('dragleave', function() { col.classList.remove('drag-over'); });
     col.addEventListener('drop', function(e) {
       e.preventDefault();
@@ -877,17 +870,42 @@ function renderBoard() {
       }
     });
 
-    // "+ Add card" footer
-    var addBtn = document.createElement('button');
-    addBtn.className = 'board-add-card-btn';
-    addBtn.textContent = '+ Add card';
-    addBtn.addEventListener('click', function() {
-      var activePid = activeFilter.indexOf('project:') === 0 ? parseInt(activeFilter.split(':')[1]) : null;
-      openNewTaskModal(null, activePid, status.id);
-    });
-    col.appendChild(addBtn);
+    if (showAddCard) {
+      var addBtn = document.createElement('button');
+      addBtn.className = 'board-add-card-btn';
+      addBtn.textContent = '+ Add card';
+      addBtn.addEventListener('click', function() {
+        var activePid = activeFilter.indexOf('project:') === 0 ? parseInt(activeFilter.split(':')[1]) : null;
+        openNewTaskModal(null, activePid, status.id);
+      });
+      col.appendChild(addBtn);
+    }
 
-    container.appendChild(col);
+    return col;
+  }
+
+  // Primary columns from allStatuses
+  var knownIds = {};
+  allStatuses.forEach(function(s) { knownIds[s.id] = true; });
+
+  allStatuses.forEach(function(status) {
+    var colTasks = tasks.filter(function(t) { return t.status_id === status.id; });
+    container.appendChild(buildBoardColumn(status, colTasks, true));
+  });
+
+  // Extra columns for tasks with project-specific statuses not in allStatuses
+  var extraMap = {};
+  tasks.forEach(function(t) {
+    if (t.status_id && !knownIds[t.status_id]) {
+      if (!extraMap[t.status_id]) {
+        extraMap[t.status_id] = { id: t.status_id, name: t.status_name, color: t.status_color || '#6b7280', tasks: [] };
+      }
+      extraMap[t.status_id].tasks.push(t);
+    }
+  });
+  Object.keys(extraMap).forEach(function(sid) {
+    var entry = extraMap[sid];
+    container.appendChild(buildBoardColumn(entry, entry.tasks, false));
   });
 
   // "+ Add status" column

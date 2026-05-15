@@ -37,6 +37,7 @@ def task_to_dict(task: models.Task) -> dict:
         "title": task.title,
         "status_id": task.status_id,
         "status_name": status_name,
+        "status_color": task.status_rel.color if task.status_rel else "#6b7280",
         "priority": task.priority,
         "start_date": task.start_date.isoformat() if task.start_date else None,
         "due_date": task.due_date.isoformat() if task.due_date else None,
