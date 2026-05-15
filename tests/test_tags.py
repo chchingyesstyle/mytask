@@ -58,3 +58,24 @@ def test_tag_name_unique(admin_headers):
 def test_list_tags_requires_auth(seeded_client):
     resp = seeded_client.get("/api/tags")
     assert resp.status_code == 401
+
+def test_update_tag_name_and_color(admin_headers):
+    client, headers = admin_headers
+    tag_id = client.post("/api/tags", json={"name": "oldie", "color": "#ffffff"}, headers=headers).json()["id"]
+    resp = client.put(f"/api/tags/{tag_id}", json={"name": "newie", "color": "#000000"}, headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["name"] == "newie"
+    assert data["color"] == "#000000"
+
+def test_update_tag_name_conflict(admin_headers):
+    client, headers = admin_headers
+    client.post("/api/tags", json={"name": "existing", "color": "#ffffff"}, headers=headers)
+    tag_id = client.post("/api/tags", json={"name": "other", "color": "#000000"}, headers=headers).json()["id"]
+    resp = client.put(f"/api/tags/{tag_id}", json={"name": "existing"}, headers=headers)
+    assert resp.status_code == 409
+
+def test_update_tag_not_found(admin_headers):
+    client, headers = admin_headers
+    resp = client.put("/api/tags/9999", json={"name": "nope"}, headers=headers)
+    assert resp.status_code == 404
