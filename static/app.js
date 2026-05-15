@@ -110,6 +110,7 @@ function navigateTo(page) {
   // Load dashboard data when switching to that page
   if (page === 'dashboard') loadDashboard();
   if (page === 'projects') renderProjectsPage();
+  if (page === 'tags') renderTagsPage();
 }
 
 function toggleChat() {
@@ -1869,6 +1870,183 @@ function buildAddStatusForm(projectId, statusList) {
   form.appendChild(cancelBtn);
   statusList.appendChild(form);
   nameInput.focus();
+}
+
+// ── Tags page ──────────────────────────────────────────────────────────────
+
+function renderTagsPage() {
+  var page = document.getElementById('page-tags');
+  while (page.firstChild) page.removeChild(page.firstChild);
+
+  var hdr = document.createElement('div');
+  hdr.className = 'tag-page-header';
+  var title = document.createElement('h2');
+  title.textContent = 'Tags';
+  var list = document.createElement('div');
+  list.className = 'tag-list-page';
+  var newBtn = document.createElement('button');
+  newBtn.textContent = '+ New Tag';
+  newBtn.addEventListener('click', function() {
+    var existing = document.getElementById('new-tag-page-form');
+    if (existing) { existing.remove(); return; }
+    var form = buildTagCreateForm(list);
+    list.insertBefore(form, list.firstChild);
+    form.querySelector('input[type="text"]').focus();
+  });
+  hdr.appendChild(title);
+  hdr.appendChild(newBtn);
+  page.appendChild(hdr);
+
+  if (allTags.length === 0) {
+    var empty = document.createElement('div');
+    empty.className = 'tag-empty';
+    empty.textContent = 'No tags yet. Create one to get started.';
+    list.appendChild(empty);
+  } else {
+    allTags.forEach(function(tag) {
+      list.appendChild(buildTagRow(tag, list));
+    });
+  }
+  page.appendChild(list);
+}
+
+function buildTagRow(tag, list) {
+  var row = document.createElement('div');
+  row.className = 'tag-row';
+  var swatch = document.createElement('span');
+  swatch.className = 'tag-swatch';
+  swatch.style.background = tag.color;
+  var nameEl = document.createElement('span');
+  nameEl.className = 'tag-row-name';
+  nameEl.textContent = tag.name;
+  var controls = document.createElement('span');
+  controls.className = 'tag-row-controls';
+  var editBtn = document.createElement('button');
+  editBtn.className = 'tag-row-btn';
+  editBtn.textContent = 'Edit';
+  editBtn.addEventListener('click', function() {
+    var existingEdit = list.querySelector('.tag-edit-row');
+    if (existingEdit) existingEdit.remove();
+    var editRow = buildTagEditRow(tag, list);
+    row.after(editRow);
+    editRow.querySelector('input[type="text"]').focus();
+  });
+  var delBtn = document.createElement('button');
+  delBtn.className = 'tag-row-btn';
+  delBtn.textContent = '✕';
+  delBtn.title = 'Delete tag';
+  delBtn.addEventListener('click', async function() {
+    if (!confirm('Delete tag "' + tag.name + '"? It will be removed from all tasks.')) return;
+    var resp = await fetch('/api/tags/' + tag.id, { method: 'DELETE', headers: authHeaders() });
+    if (resp.ok) { await loadTags(); renderTagsPage(); }
+    else { alert('Failed to delete tag'); }
+  });
+  controls.appendChild(editBtn);
+  controls.appendChild(delBtn);
+  row.appendChild(swatch);
+  row.appendChild(nameEl);
+  row.appendChild(controls);
+  return row;
+}
+
+function buildTagEditRow(tag, list) {
+  var row = document.createElement('div');
+  row.className = 'tag-edit-row';
+  var swatch = document.createElement('span');
+  swatch.className = 'tag-swatch';
+  swatch.style.background = tag.color;
+  var nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.value = tag.name;
+  nameInput.style.cssText = 'font-size:12px;padding:4px 8px;width:150px;';
+  var colorInput = document.createElement('input');
+  colorInput.type = 'color';
+  colorInput.value = tag.color;
+  colorInput.style.cssText = 'width:28px;height:26px;padding:1px;cursor:pointer;border:none;';
+  colorInput.addEventListener('input', function() { swatch.style.background = colorInput.value; });
+  var errEl = document.createElement('span');
+  errEl.className = 'tag-inline-err';
+  errEl.style.display = 'none';
+  var saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Save';
+  saveBtn.style.cssText = 'font-size:11px;padding:4px 10px;';
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-secondary';
+  cancelBtn.textContent = '✕';
+  cancelBtn.style.cssText = 'font-size:11px;padding:4px 7px;';
+  async function doSave() {
+    var name = nameInput.value.trim();
+    if (!name) return;
+    errEl.style.display = 'none';
+    var resp = await fetch('/api/tags/' + tag.id, {
+      method: 'PUT', headers: authHeaders(),
+      body: JSON.stringify({ name: name, color: colorInput.value }),
+    });
+    if (resp.ok) { await loadTags(); renderTagsPage(); }
+    else if (resp.status === 409) { errEl.textContent = 'Name already in use'; errEl.style.display = 'inline'; }
+    else { alert('Failed to update tag'); }
+  }
+  saveBtn.addEventListener('click', doSave);
+  cancelBtn.addEventListener('click', function() { row.remove(); });
+  nameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doSave();
+    if (e.key === 'Escape') row.remove();
+  });
+  row.appendChild(swatch);
+  row.appendChild(nameInput);
+  row.appendChild(colorInput);
+  row.appendChild(errEl);
+  row.appendChild(saveBtn);
+  row.appendChild(cancelBtn);
+  return row;
+}
+
+function buildTagCreateForm(list) {
+  var form = document.createElement('div');
+  form.id = 'new-tag-page-form';
+  form.className = 'tag-create-form';
+  var nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.placeholder = 'Tag name';
+  nameInput.style.cssText = 'font-size:12px;padding:4px 8px;width:150px;';
+  var colorInput = document.createElement('input');
+  colorInput.type = 'color';
+  colorInput.value = '#4a90d9';
+  colorInput.style.cssText = 'width:28px;height:26px;padding:1px;cursor:pointer;border:none;';
+  var errEl = document.createElement('span');
+  errEl.className = 'tag-inline-err';
+  errEl.style.display = 'none';
+  var saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Create';
+  saveBtn.style.cssText = 'font-size:11px;padding:4px 10px;';
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-secondary';
+  cancelBtn.textContent = '✕';
+  cancelBtn.style.cssText = 'font-size:11px;padding:4px 7px;';
+  async function doCreate() {
+    var name = nameInput.value.trim();
+    if (!name) return;
+    errEl.style.display = 'none';
+    var resp = await fetch('/api/tags', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify({ name: name, color: colorInput.value }),
+    });
+    if (resp.ok) { await loadTags(); renderTagsPage(); }
+    else if (resp.status === 409) { errEl.textContent = 'Name already in use'; errEl.style.display = 'inline'; }
+    else { alert('Failed to create tag'); }
+  }
+  saveBtn.addEventListener('click', doCreate);
+  cancelBtn.addEventListener('click', function() { form.remove(); });
+  nameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doCreate();
+    if (e.key === 'Escape') form.remove();
+  });
+  form.appendChild(nameInput);
+  form.appendChild(colorInput);
+  form.appendChild(errEl);
+  form.appendChild(saveBtn);
+  form.appendChild(cancelBtn);
+  return form;
 }
 
 // Event wiring

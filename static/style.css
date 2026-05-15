@@ -589,3 +589,19 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
 .proj-new-form { background: var(--bg-panel); border: 1px dashed var(--border); border-radius: var(--r); padding: 10px 14px; display: flex; align-items: center; gap: 8px; }
 .proj-new-form input { font-size: 13px; padding: 6px 10px; }
 .proj-empty { color: var(--text-dim); font-size: 13px; text-align: center; padding: 40px 16px; }
+
+/* ── Tags page ── */
+.tag-page-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.tag-page-header h2 { font-size: 15px; font-weight: 600; }
+.tag-list-page { padding: 0; display: flex; flex-direction: column; overflow-y: auto; flex: 1; }
+.tag-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.tag-row:hover { background: rgba(255,255,255,.02); }
+.tag-swatch { width: 20px; height: 20px; border-radius: 4px; flex-shrink: 0; }
+.tag-row-name { flex: 1; font-size: 13px; }
+.tag-row-controls { display: flex; gap: 6px; }
+.tag-row-btn { background: none; border: 1px solid var(--border); color: var(--text-dim); font-size: 11px; padding: 3px 9px; cursor: pointer; border-radius: var(--r); }
+.tag-row-btn:hover { color: var(--text); opacity: 1; }
+.tag-edit-row { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
+.tag-create-form { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
+.tag-inline-err { color: var(--danger); font-size: 11px; }
+.tag-empty { color: var(--text-dim); font-size: 13px; text-align: center; padding: 40px 16px; }
