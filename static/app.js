@@ -138,6 +138,59 @@ function renderTagFilters() {
     btn.addEventListener('click', function() { setFilter('tag:' + tag.id, btn); });
     container.appendChild(btn);
   });
+
+  // "+ New tag" toggle button
+  var addBtn = document.createElement('button');
+  addBtn.className = 'filter-btn';
+  addBtn.textContent = '+ Tag';
+  addBtn.style.cssText = 'opacity:0.5;font-size:10px;';
+  addBtn.addEventListener('click', function() {
+    var existing = document.getElementById('new-tag-form');
+    if (existing) { existing.remove(); return; }
+    var form = document.createElement('span');
+    form.id = 'new-tag-form';
+    form.style.cssText = 'display:inline-flex;align-items:center;gap:4px;margin-left:4px';
+    var nameInp = document.createElement('input');
+    nameInp.type = 'text';
+    nameInp.placeholder = 'Tag name';
+    nameInp.style.cssText = 'font-size:11px;padding:2px 6px;width:90px';
+    var colorInp = document.createElement('input');
+    colorInp.type = 'color';
+    colorInp.value = '#4a90d9';
+    colorInp.style.cssText = 'width:26px;height:22px;padding:1px;cursor:pointer;border:none';
+    var saveBtn = document.createElement('button');
+    saveBtn.textContent = '✓';
+    saveBtn.style.cssText = 'font-size:10px;padding:1px 6px';
+    var cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn-secondary';
+    cancelBtn.textContent = '✕';
+    cancelBtn.style.cssText = 'font-size:10px;padding:1px 6px';
+    async function doCreate() {
+      var name = nameInp.value.trim();
+      if (!name) return;
+      var resp = await fetch('/api/tags', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ name: name, color: colorInp.value }),
+      });
+      if (resp.ok) { await loadTags(); } else {
+        var err = await resp.json().catch(function() { return {}; });
+        alert(err.detail || 'Failed to create tag');
+      }
+    }
+    saveBtn.addEventListener('click', doCreate);
+    cancelBtn.addEventListener('click', function() { form.remove(); });
+    nameInp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') doCreate();
+      if (e.key === 'Escape') form.remove();
+    });
+    form.appendChild(nameInp);
+    form.appendChild(colorInp);
+    form.appendChild(saveBtn);
+    form.appendChild(cancelBtn);
+    container.appendChild(form);
+    nameInp.focus();
+  });
+  container.appendChild(addBtn);
 }
 
 // Tasks

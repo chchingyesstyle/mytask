@@ -27,8 +27,6 @@ def create_tag(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
     if db.query(models.Tag).filter(models.Tag.name == req.name).first():
         raise HTTPException(status_code=409, detail="Tag name already exists")
     tag = models.Tag(name=req.name, color=req.color)

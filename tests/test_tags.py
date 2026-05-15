@@ -14,7 +14,7 @@ def test_list_tags_any_user(admin_headers):
     assert resp.status_code == 200
     assert any(t["name"] == "server" for t in resp.json())
 
-def test_non_admin_cannot_create_tag(client):
+def test_non_admin_can_create_tag(client):
     from tests.conftest import TestingSessionLocal
     from auth import hash_password
     import models
@@ -25,7 +25,7 @@ def test_non_admin_cannot_create_tag(client):
     token = client.post("/api/auth/login", json={"username": "regular", "password": "pw"}).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     resp = client.post("/api/tags", json={"name": "test", "color": "#ffffff"}, headers=headers)
-    assert resp.status_code == 403
+    assert resp.status_code == 201
 
 def test_admin_delete_tag(admin_headers):
     client, headers = admin_headers
