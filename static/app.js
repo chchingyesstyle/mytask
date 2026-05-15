@@ -66,16 +66,10 @@ async function initApp() {
       if (el) el.textContent = d.model || '';
     });
     document.getElementById('chat-fab').style.display = 'flex';
-    // Wire sidebar nav items
-    document.querySelectorAll('.sidebar-item[data-page]').forEach(function(el) {
-      el.addEventListener('click', function() { navigateTo(el.dataset.page); });
-    });
-    document.querySelectorAll('.drawer-item[data-page]').forEach(function(el) {
-      el.addEventListener('click', function() { navigateTo(el.dataset.page); if (drawerOpen) toggleDrawer(); });
-    });
     await loadProjects();
     await loadTags();
     await loadTasks();
+    navigateTo(currentPage);
     addAiMessage('Hello ' + currentUser.username + '! I am your AI assistant. Tell me what tasks you need help with.');
   } catch (e) { showLogin(); }
 }
@@ -113,6 +107,7 @@ function toggleChat() {
   chatOpen = !chatOpen;
   var widget = document.getElementById('chat-widget');
   var fab = document.getElementById('chat-fab');
+  if (!widget || !fab) return;
   widget.style.display = chatOpen ? 'flex' : 'none';
   fab.textContent = chatOpen ? '✕' : '💬';
   if (chatOpen) {
@@ -1015,6 +1010,12 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('chat-close-btn').addEventListener('click', toggleChat);
   document.getElementById('hamburger-btn').addEventListener('click', toggleDrawer);
   document.getElementById('drawer-overlay').addEventListener('click', toggleDrawer);
+  document.querySelectorAll('.sidebar-item[data-page]').forEach(function(el) {
+    el.addEventListener('click', function() { navigateTo(el.dataset.page); });
+  });
+  document.querySelectorAll('.drawer-item[data-page]').forEach(function(el) {
+    el.addEventListener('click', function() { navigateTo(el.dataset.page); if (drawerOpen) toggleDrawer(); });
+  });
   document.getElementById('new-task-btn').addEventListener('click', showNewTaskForm);
   document.getElementById('modal-create-btn').addEventListener('click', createTask);
   document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
