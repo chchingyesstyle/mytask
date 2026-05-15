@@ -6,6 +6,7 @@ let allTags = [];
 let chatHistory = [];
 let activeFilter = 'all';
 let expandedTaskId = null;
+let editingTaskId = null;
 
 // Auth
 function getToken() { return localStorage.getItem('mytask_token'); }
@@ -277,7 +278,25 @@ function buildTaskCard(t) {
   delBtn.className = 'btn-danger';
   delBtn.textContent = 'Delete';
   delBtn.addEventListener('click', function() { deleteTask(t.id); });
+  var editBtn = document.createElement('button');
+  editBtn.className = 'btn-secondary';
+  editBtn.textContent = '✏ Edit';
+  editBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (editingTaskId === t.id) {
+      hideTaskEditForm(detail, t.id);
+    } else {
+      if (editingTaskId !== null) {
+        var prevForm = document.getElementById('task-edit-form-' + editingTaskId);
+        if (prevForm) prevForm.remove();
+        editingTaskId = null;
+      }
+      editingTaskId = t.id;
+      showTaskEditForm(t, detail);
+    }
+  });
   actions.appendChild(statusSel);
+  actions.appendChild(editBtn);
   actions.appendChild(delBtn);
   detail.appendChild(actions);
 
@@ -380,6 +399,112 @@ async function updateTaskStatus(id, status) {
 async function deleteTask(id) {
   if (!confirm('Delete this task?')) return;
   await fetch('/api/tasks/' + id, { method: 'DELETE', headers: authHeaders() });
+  await loadTasks();
+}
+
+function showTaskEditForm(t, detail) {
+  var form = document.createElement('div');
+  form.className = 'task-edit-form';
+  form.id = 'task-edit-form-' + t.id;
+
+  function field(labelText, inputEl) {
+    var wrap = document.createElement('div');
+    var lbl = document.createElement('div');
+    lbl.className = 'edit-label';
+    lbl.textContent = labelText;
+    wrap.appendChild(lbl);
+    wrap.appendChild(inputEl);
+    return wrap;
+  }
+
+  var titleInp = document.createElement('input');
+  titleInp.type = 'text';
+  titleInp.value = t.title;
+
+  var dateInp = document.createElement('input');
+  dateInp.type = 'date';
+  if (t.due_date) dateInp.value = t.due_date;
+
+  var priSel = document.createElement('select');
+  ['high', 'medium', 'low'].forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p;
+    opt.textContent = p.charAt(0).toUpperCase() + p.slice(1);
+    if (t.priority === p) opt.selected = true;
+    priSel.appendChild(opt);
+  });
+
+  var notesArea = document.createElement('textarea');
+  notesArea.value = t.notes || '';
+
+  var row2 = document.createElement('div');
+  row2.className = 'edit-row-2col';
+  row2.appendChild(field('Due Date', dateInp));
+  row2.appendChild(field('Priority', priSel));
+
+  form.appendChild(field('Title', titleInp));
+  form.appendChild(row2);
+  form.appendChild(field('Notes', notesArea));
+
+  var actionsDiv = document.createElement('div');
+  actionsDiv.className = 'edit-actions';
+
+  var saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Save';
+  saveBtn.style.cssText = 'font-size:11px;padding:4px 10px';
+
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-secondary';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style.cssText = 'font-size:11px;padding:4px 10px';
+
+  titleInp.addEventListener('input', function() {
+    saveBtn.disabled = !titleInp.value.trim();
+  });
+
+  cancelBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    hideTaskEditForm(detail, t.id);
+  });
+
+  saveBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (!titleInp.value.trim()) return;
+    saveTaskEdit(t.id, {
+      title: titleInp.value.trim(),
+      due_date: dateInp.value || null,
+      priority: priSel.value,
+      notes: notesArea.value.trim() || null,
+    });
+  });
+
+  form.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { e.stopPropagation(); hideTaskEditForm(detail, t.id); }
+  });
+
+  actionsDiv.appendChild(cancelBtn);
+  actionsDiv.appendChild(saveBtn);
+  form.appendChild(actionsDiv);
+
+  detail.appendChild(form);
+  titleInp.focus();
+  titleInp.select();
+}
+
+function hideTaskEditForm(detail, taskId) {
+  editingTaskId = null;
+  var form = document.getElementById('task-edit-form-' + taskId);
+  if (form) form.remove();
+}
+
+async function saveTaskEdit(taskId, data) {
+  var resp = await fetch('/api/tasks/' + taskId, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!resp.ok) { console.warn('Save task edit failed:', resp.status); return; }
+  editingTaskId = null;
   await loadTasks();
 }
 
