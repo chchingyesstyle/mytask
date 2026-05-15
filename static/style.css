@@ -271,3 +271,43 @@ button.btn-secondary { background: var(--border); }
 .tag-picker-item:not(.assigned) { opacity: 0.4; }
 .tag-picker-item:hover { opacity: 1; }
 input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; background: none; border: 1px solid var(--border); border-radius: var(--r); }
+
+/* Task inline edit form */
+.task-edit-form {
+  border: 1px solid var(--accent);
+  border-radius: var(--r);
+  padding: 10px;
+  margin-top: 8px;
+  background: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.task-edit-form .edit-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 2px;
+}
+.task-edit-form .edit-row-2col { display: flex; gap: 8px; }
+.task-edit-form .edit-row-2col > div { flex: 1; min-width: 0; }
+.task-edit-form .edit-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 2px; }
+.task-edit-form input, .task-edit-form select, .task-edit-form textarea {
+  font-size: 11px; padding: 4px 8px;
+}
+.task-edit-form textarea { resize: vertical; min-height: 48px; font-family: inherit; }
+
+/* Step pencil edit button */
+.step-edit-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.step-edit-btn:hover { border-color: var(--accent); color: var(--accent); opacity: 1; }
