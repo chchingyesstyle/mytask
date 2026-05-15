@@ -900,15 +900,14 @@ async function loadAndRenderSubtasks(parentId, container) {
 
     children.forEach(function(child) {
       var row = document.createElement('div');
-      row.className = 'subtask-row' + (child.status === 'done' ? ' done' : '');
+      row.className = 'subtask-row' + (child.status_name === 'Done' ? ' done' : '');
       row.id = 'step-row-' + child.id;
       var cb = document.createElement('input');
       cb.type = 'checkbox';
-      cb.checked = child.status === 'done';
+      cb.checked = child.status_name === 'Done';
       cb.addEventListener('change', function(e) {
         e.stopPropagation();
-        var newStatus = cb.checked ? 'done' : 'todo';
-        toggleSubtask(child.id, newStatus, parentId, container);
+        toggleSubtask(child.id, cb.checked, parentId, container);
       });
       var titleSpan = document.createElement('span');
       titleSpan.textContent = child.title;
@@ -951,9 +950,16 @@ async function loadAndRenderSubtasks(parentId, container) {
   } catch (e) { console.warn('Subtask load failed:', e); }
 }
 
-async function toggleSubtask(id, status, parentId, container) {
+function findStatusId(name) {
+  var s = allStatuses.find(function(s) { return s.name.toLowerCase() === name.toLowerCase(); });
+  return s ? s.id : null;
+}
+
+async function toggleSubtask(id, isDone, parentId, container) {
+  var statusId = isDone ? findStatusId('Done') : findStatusId('Todo');
+  if (!statusId) return;
   await fetch('/api/tasks/' + id, {
-    method: 'PUT', headers: authHeaders(), body: JSON.stringify({ status: status }),
+    method: 'PUT', headers: authHeaders(), body: JSON.stringify({ status_id: statusId }),
   });
   await loadAndRenderSubtasks(parentId, container);
   await loadTasks();
