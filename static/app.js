@@ -339,7 +339,7 @@ function setFilter(filter, btn) {
   if (boardTab) {
     var isProjectFilter = filter.indexOf('project:') === 0;
     boardTab.disabled = !isProjectFilter;
-    boardTab.title = isProjectFilter ? '' : 'Select a project to use Board view';
+    boardTab.title = isProjectFilter ? '' : 'Select a project in the filter bar to enable Board view';
     // If board is active and we lose project filter, switch back to list
     if (!isProjectFilter && currentView === 'board') switchView('list');
   }
@@ -832,7 +832,7 @@ function renderBoard() {
   if (activeFilter.indexOf('project:') !== 0) {
     var msg = document.createElement('div');
     msg.className = 'board-disabled-msg';
-    msg.textContent = 'Select a project to use Board view';
+    msg.textContent = 'Board view requires a project — click a project name in the filter bar above';
     container.appendChild(msg);
     return;
   }
