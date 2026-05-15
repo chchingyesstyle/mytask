@@ -7,6 +7,7 @@ let chatHistory = [];
 let activeFilter = 'all';
 let expandedTaskId = null;
 let editingTaskId = null;
+let editingStepId = null;
 
 // Auth
 function getToken() { return localStorage.getItem('mytask_token'); }
@@ -533,6 +534,7 @@ async function loadAndRenderSubtasks(parentId, container) {
     children.forEach(function(child) {
       var row = document.createElement('div');
       row.className = 'subtask-row' + (child.status === 'done' ? ' done' : '');
+      row.id = 'step-row-' + child.id;
       var cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.checked = child.status === 'done';
@@ -543,14 +545,30 @@ async function loadAndRenderSubtasks(parentId, container) {
       });
       var titleSpan = document.createElement('span');
       titleSpan.textContent = child.title;
+      titleSpan.style.flex = '1';
       row.appendChild(cb);
       row.appendChild(titleSpan);
+      if (child.due_date) {
+        var dateSpan = document.createElement('span');
+        dateSpan.className = 'subtask-nested-hint';
+        dateSpan.textContent = child.due_date;
+        row.appendChild(dateSpan);
+      }
       if (child.subtask_count > 0) {
         var hint = document.createElement('span');
         hint.className = 'subtask-nested-hint';
         hint.textContent = '↳ ' + child.subtask_count + ' steps';
         row.appendChild(hint);
       }
+      var editStepBtn = document.createElement('button');
+      editStepBtn.className = 'step-edit-btn';
+      editStepBtn.textContent = '✏';
+      editStepBtn.title = 'Edit step';
+      editStepBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showStepEditRow(child, row, parentId, container);
+      });
+      row.appendChild(editStepBtn);
       container.appendChild(row);
     });
 
@@ -606,6 +624,84 @@ function showAddStepInput(parentId, container, addRowEl) {
   inputRow.appendChild(cancelSpan);
   container.insertBefore(inputRow, addRowEl);
   inp.focus();
+}
+
+function showStepEditRow(child, originalRow, parentId, container) {
+  if (editingStepId !== null) {
+    var prev = document.getElementById('step-edit-' + editingStepId);
+    if (prev) prev.remove();
+    var prevRow = document.getElementById('step-row-' + editingStepId);
+    if (prevRow) prevRow.style.display = '';
+  }
+  editingStepId = child.id;
+  originalRow.style.display = 'none';
+
+  var editRow = document.createElement('div');
+  editRow.className = 'subtask-row';
+  editRow.id = 'step-edit-' + child.id;
+
+  var titleInp = document.createElement('input');
+  titleInp.type = 'text';
+  titleInp.value = child.title;
+  titleInp.style.cssText = 'flex:1;font-size:11px;padding:3px 6px;min-width:0';
+
+  var dateInp = document.createElement('input');
+  dateInp.type = 'date';
+  if (child.due_date) dateInp.value = child.due_date;
+  dateInp.style.cssText = 'font-size:10px;padding:3px 5px;width:110px;flex-shrink:0';
+  dateInp.title = 'Due date (optional)';
+
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-secondary';
+  cancelBtn.textContent = '✕';
+  cancelBtn.style.cssText = 'font-size:10px;padding:2px 7px;flex-shrink:0';
+
+  var saveBtn = document.createElement('button');
+  saveBtn.textContent = '✓';
+  saveBtn.style.cssText = 'font-size:10px;padding:2px 7px;flex-shrink:0';
+
+  function doCancel() {
+    editingStepId = null;
+    editRow.remove();
+    originalRow.style.display = '';
+  }
+
+  function doSave() {
+    if (!titleInp.value.trim()) return;
+    saveStepEdit(child.id, titleInp.value.trim(), dateInp.value || null,
+                 parentId, container, editRow, originalRow);
+  }
+
+  cancelBtn.addEventListener('click', function(e) { e.stopPropagation(); doCancel(); });
+  saveBtn.addEventListener('click', function(e) { e.stopPropagation(); doSave(); });
+  titleInp.addEventListener('keydown', function(e) {
+    e.stopPropagation();
+    if (e.key === 'Enter') doSave();
+    if (e.key === 'Escape') doCancel();
+  });
+
+  editRow.appendChild(titleInp);
+  editRow.appendChild(dateInp);
+  editRow.appendChild(cancelBtn);
+  editRow.appendChild(saveBtn);
+
+  container.insertBefore(editRow, originalRow.nextSibling);
+  titleInp.focus();
+  titleInp.select();
+}
+
+async function saveStepEdit(stepId, title, dueDate, parentId, container, editRow, originalRow) {
+  var resp = await fetch('/api/tasks/' + stepId, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify({ title: title, due_date: dueDate }),
+  });
+  if (!resp.ok) { console.warn('Save step edit failed:', resp.status); return; }
+  editingStepId = null;
+  editRow.remove();
+  originalRow.style.display = '';
+  await loadAndRenderSubtasks(parentId, container);
+  await loadTasks();
 }
 
 // Tag management on tasks
