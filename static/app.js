@@ -8,6 +8,9 @@ let activeFilter = 'all';
 let expandedTaskId = null;
 let editingTaskId = null;
 let editingStepId = null;
+let currentPage = 'tasks';
+let chatOpen = false;
+let drawerOpen = false;
 
 // Auth
 function getToken() { return localStorage.getItem('mytask_token'); }
@@ -52,14 +55,23 @@ async function initApp() {
     currentUser = await resp.json();
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
-    document.getElementById('nav-username').textContent = currentUser.username;
-    document.getElementById('workspace-label').textContent = currentUser.username + "'s Workspace";
+    document.getElementById('sidebar-username').textContent = currentUser.username;
+    document.getElementById('drawer-username').textContent = currentUser.username;
     if (currentUser.role === 'admin') {
-      document.getElementById('admin-link').style.display = 'inline';
+      document.getElementById('admin-link').style.display = 'flex';
+      document.getElementById('admin-link-drawer').style.display = 'flex';
     }
     fetch('/api/info').then(function(r) { return r.json(); }).then(function(d) {
       var el = document.getElementById('chat-model-label');
       if (el) el.textContent = d.model || '';
+    });
+    document.getElementById('chat-fab').style.display = 'flex';
+    // Wire sidebar nav items
+    document.querySelectorAll('.sidebar-item[data-page]').forEach(function(el) {
+      el.addEventListener('click', function() { navigateTo(el.dataset.page); });
+    });
+    document.querySelectorAll('.drawer-item[data-page]').forEach(function(el) {
+      el.addEventListener('click', function() { navigateTo(el.dataset.page); if (drawerOpen) toggleDrawer(); });
     });
     await loadProjects();
     await loadTags();
@@ -71,6 +83,51 @@ async function initApp() {
 function showLogin() {
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
+  document.getElementById('chat-fab').style.display = 'none';
+  if (chatOpen) toggleChat();
+}
+
+function navigateTo(page) {
+  currentPage = page;
+  var pages = ['tasks', 'dashboard', 'projects', 'tags'];
+  pages.forEach(function(p) {
+    var el = document.getElementById('page-' + p);
+    if (el) el.style.display = p === page ? 'flex' : 'none';
+  });
+  // Update sidebar active state
+  document.querySelectorAll('.sidebar-item[data-page]').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+  document.querySelectorAll('.drawer-item[data-page]').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+  // Update mobile page title
+  var titles = { tasks: 'Tasks', dashboard: 'Dashboard', projects: 'Projects', tags: 'Tags' };
+  var titleEl = document.getElementById('mobile-page-title');
+  if (titleEl) titleEl.textContent = titles[page] || page;
+  // Load dashboard data when switching to that page
+  if (page === 'dashboard') loadDashboard();
+}
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  var widget = document.getElementById('chat-widget');
+  var fab = document.getElementById('chat-fab');
+  widget.style.display = chatOpen ? 'flex' : 'none';
+  fab.textContent = chatOpen ? '✕' : '💬';
+  if (chatOpen) {
+    var msgs = document.getElementById('chat-messages');
+    msgs.scrollTop = msgs.scrollHeight;
+    document.getElementById('chat-input').focus();
+  }
+}
+
+function toggleDrawer() {
+  drawerOpen = !drawerOpen;
+  var drawer = document.getElementById('mobile-drawer');
+  var overlay = document.getElementById('drawer-overlay');
+  drawer.classList.toggle('open', drawerOpen);
+  overlay.style.display = drawerOpen ? 'block' : 'none';
 }
 
 // Colour helper
@@ -954,6 +1011,10 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('chat-input').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') sendMessage();
   });
+  document.getElementById('chat-fab').addEventListener('click', toggleChat);
+  document.getElementById('chat-close-btn').addEventListener('click', toggleChat);
+  document.getElementById('hamburger-btn').addEventListener('click', toggleDrawer);
+  document.getElementById('drawer-overlay').addEventListener('click', toggleDrawer);
   document.getElementById('new-task-btn').addEventListener('click', showNewTaskForm);
   document.getElementById('modal-create-btn').addEventListener('click', createTask);
   document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
