@@ -339,8 +339,6 @@ function setFilter(filter, btn) {
   } else {
     loadStatuses().then(function() { renderCurrentView(); });
   }
-  // If board is active and we lose project filter, switch back to list
-  if (filter.indexOf('project:') !== 0 && currentView === 'board') switchView('list');
 }
 
 function filteredTasks() {
@@ -826,15 +824,6 @@ function renderBoard() {
   var container = document.getElementById('board-columns');
   if (!container) return;
   while (container.firstChild) container.removeChild(container.firstChild);
-
-  // Board requires a project to be selected
-  if (activeFilter.indexOf('project:') !== 0) {
-    var msg = document.createElement('div');
-    msg.className = 'board-disabled-msg';
-    msg.textContent = 'Board view requires a project — click a project name in the filter bar above';
-    container.appendChild(msg);
-    return;
-  }
 
   var tasks = filteredTasks();
 
