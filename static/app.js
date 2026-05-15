@@ -387,6 +387,7 @@ function renderTasks() {
 
 function toggleTask(id) {
   editingTaskId = null;
+  editingStepId = null;
   expandedTaskId = (expandedTaskId === id) ? null : id;
   renderTasks();
 }

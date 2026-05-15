@@ -133,8 +133,9 @@ def update_task(
         raise HTTPException(status_code=404, detail="Task not found")
     if task.owner_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
-    for field, value in req.model_dump(exclude_none=True, exclude={"tag_ids"}).items():
-        setattr(task, field, value)
+    update_data = req.model_dump(exclude={"tag_ids"})
+    for field in req.model_fields_set - {"tag_ids"}:
+        setattr(task, field, update_data[field])
     if req.tag_ids is not None:
         task.tags = db.query(models.Tag).filter(models.Tag.id.in_(req.tag_ids)).all()
     task.updated_at = datetime.utcnow()
