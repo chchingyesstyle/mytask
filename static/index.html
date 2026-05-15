@@ -22,45 +22,81 @@
 
   <!-- Main App -->
   <div id="app" style="display:none">
-    <nav class="topnav">
-      <div class="nav-left">
-        <span class="app-logo">MyTask</span>
-        <span id="workspace-label" class="workspace-label"></span>
+
+    <!-- Sidebar (desktop) -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">MyTask</div>
+      <nav class="sidebar-nav">
+        <button class="sidebar-item active" data-page="tasks">
+          <span class="sidebar-icon">✓</span>
+          <span class="sidebar-label">Tasks</span>
+          <span id="overdue-badge" class="overdue-badge" style="display:none"></span>
+        </button>
+        <button class="sidebar-item" data-page="dashboard">
+          <span class="sidebar-icon">📊</span>
+          <span class="sidebar-label">Dashboard</span>
+        </button>
+        <button class="sidebar-item" data-page="projects">
+          <span class="sidebar-icon">📁</span>
+          <span class="sidebar-label">Projects</span>
+        </button>
+        <button class="sidebar-item" data-page="tags">
+          <span class="sidebar-icon">🏷</span>
+          <span class="sidebar-label">Tags</span>
+        </button>
+        <a id="admin-link" href="/admin" class="sidebar-item" style="display:none">
+          <span class="sidebar-icon">⚙</span>
+          <span class="sidebar-label">Admin</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <span id="sidebar-username" class="sidebar-username"></span>
+        <button id="logout-btn" class="sidebar-logout">Logout</button>
       </div>
-      <div class="nav-right">
-        <span id="overdue-badge" class="overdue-badge" style="display:none"></span>
-        <span id="nav-username" class="nav-username"></span>
-        <a id="admin-link" href="/admin" class="nav-link" style="display:none">Admin</a>
-        <button id="logout-btn" class="nav-btn">Logout</button>
+    </aside>
+
+    <!-- Mobile top bar -->
+    <div class="mobile-topbar">
+      <button id="hamburger-btn" class="hamburger-btn">☰</button>
+      <span id="mobile-page-title" class="mobile-page-title">Tasks</span>
+    </div>
+
+    <!-- Mobile drawer -->
+    <div id="mobile-drawer" class="mobile-drawer">
+      <div class="sidebar-logo">MyTask</div>
+      <nav class="sidebar-nav">
+        <button class="drawer-item active" data-page="tasks">
+          <span class="sidebar-icon">✓</span>
+          <span class="sidebar-label">Tasks</span>
+        </button>
+        <button class="drawer-item" data-page="dashboard">
+          <span class="sidebar-icon">📊</span>
+          <span class="sidebar-label">Dashboard</span>
+        </button>
+        <button class="drawer-item" data-page="projects">
+          <span class="sidebar-icon">📁</span>
+          <span class="sidebar-label">Projects</span>
+        </button>
+        <button class="drawer-item" data-page="tags">
+          <span class="sidebar-icon">🏷</span>
+          <span class="sidebar-label">Tags</span>
+        </button>
+        <a id="admin-link-drawer" href="/admin" class="drawer-item" style="display:none">
+          <span class="sidebar-icon">⚙</span>
+          <span class="sidebar-label">Admin</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <span id="drawer-username" class="sidebar-username"></span>
       </div>
-    </nav>
+    </div>
+    <div id="drawer-overlay" class="drawer-overlay" style="display:none"></div>
 
-    <div class="split-view">
-      <!-- Left: Task Panel -->
-      <div class="task-panel">
+    <!-- Main content -->
+    <main class="main-content">
 
-        <!-- Dashboard Panel -->
-        <div id="dashboard-strip" class="dashboard-strip" style="display:none">
-          <div class="dashboard-stats">
-            <div class="dashboard-stat overdue">
-              <div class="stat-num" id="stat-overdue-num">0</div>
-              <div class="stat-label">Overdue</div>
-            </div>
-            <div class="dashboard-stat today">
-              <div class="stat-num" id="stat-today-num">0</div>
-              <div class="stat-label">Due Today</div>
-            </div>
-            <div class="dashboard-stat week">
-              <div class="stat-num" id="stat-week-num">0</div>
-              <div class="stat-label">This Week</div>
-            </div>
-          </div>
-          <div id="dashboard-briefing" class="briefing-line" style="display:none">
-            <span class="briefing-icon">🤖</span>
-            <span id="briefing-text"></span>
-          </div>
-        </div>
-
+      <!-- Tasks page -->
+      <div id="page-tasks" class="page">
         <div class="filter-bar" id="filter-bar">
           <button class="filter-btn active" id="filter-all">All</button>
           <button class="filter-btn" id="filter-today">Today</button>
@@ -74,21 +110,52 @@
         </div>
       </div>
 
-      <!-- Right: Chat Panel -->
-      <div class="chat-panel">
-        <div class="chat-header">
-          <div class="ai-dot" id="ai-dot"></div>
-          <span class="chat-title">AI Assistant</span>
-          <span class="chat-model" id="chat-model-label"></span>
-        </div>
-        <div id="chat-messages" class="chat-messages"></div>
-        <div class="chat-input-row">
-          <input id="chat-input" type="text"
-            placeholder="Tell me what to do... e.g. add task: review firewall logs, high priority">
-          <button id="send-btn">Send</button>
+      <!-- Dashboard page -->
+      <div id="page-dashboard" class="page" style="display:none">
+        <div class="page-header"><h2>Dashboard</h2></div>
+        <div class="dashboard-page-content">
+          <div id="dashboard-strip" class="dashboard-strip" style="display:block">
+            <div class="dashboard-stats">
+              <div class="dashboard-stat overdue">
+                <div class="stat-num" id="stat-overdue-num">0</div>
+                <div class="stat-label">Overdue</div>
+              </div>
+              <div class="dashboard-stat today">
+                <div class="stat-num" id="stat-today-num">0</div>
+                <div class="stat-label">Due Today</div>
+              </div>
+              <div class="dashboard-stat week">
+                <div class="stat-num" id="stat-week-num">0</div>
+                <div class="stat-label">This Week</div>
+              </div>
+            </div>
+            <div id="dashboard-briefing" class="briefing-line" style="display:none">
+              <span class="briefing-icon">🤖</span>
+              <span id="briefing-text"></span>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+
+      <!-- Projects page -->
+      <div id="page-projects" class="page" style="display:none">
+        <div class="page-header"><h2>Projects</h2></div>
+        <div class="placeholder-page">
+          <div class="placeholder-icon">📁</div>
+          <p>Projects page coming soon</p>
+        </div>
+      </div>
+
+      <!-- Tags page -->
+      <div id="page-tags" class="page" style="display:none">
+        <div class="page-header"><h2>Tags</h2></div>
+        <div class="placeholder-page">
+          <div class="placeholder-icon">🏷</div>
+          <p>Tags page coming soon</p>
+        </div>
+      </div>
+
+    </main>
   </div>
 
   <!-- New Task Modal -->
@@ -110,6 +177,25 @@
         <button id="modal-create-btn">Create Task</button>
         <button class="btn-secondary" id="modal-cancel-btn">Cancel</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Chat FAB -->
+  <button id="chat-fab" class="chat-fab" style="display:none" aria-label="Open AI chat">💬</button>
+
+  <!-- Chat widget -->
+  <div id="chat-widget" class="chat-widget" style="display:none">
+    <div class="chat-header">
+      <div class="ai-dot" id="ai-dot"></div>
+      <span class="chat-title">AI Assistant</span>
+      <span class="chat-model" id="chat-model-label"></span>
+      <button id="chat-close-btn" class="chat-close-btn" aria-label="Close chat">✕</button>
+    </div>
+    <div id="chat-messages" class="chat-messages"></div>
+    <div class="chat-input-row">
+      <input id="chat-input" type="text"
+        placeholder="Tell me what to do... e.g. add task: review firewall logs">
+      <button id="send-btn">Send</button>
     </div>
   </div>
 
