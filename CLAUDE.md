@@ -47,7 +47,7 @@ docker cp static/style.css mytask-mytask-1:/app/static/style.css
 - Tag assignment after task creation requires `db.flush()` first (to get the task ID before commit)
 - `PUT /api/tasks/{id}` uses `req.model_fields_set` (not `model_dump(exclude_none=True)`) to iterate update fields — this allows explicitly-sent `null` values (e.g. clearing `due_date` or `notes`) to correctly set the column to NULL
 - `GET /api/info` — unauthenticated; returns `{"model": MODEL}`; used by frontend to label the chat panel
-- `POST /api/tags` — open to all authenticated users (not admin-only); `DELETE /api/tags/{id}` remains admin-only
+- `POST /api/tags` and `DELETE /api/tags/{id}` — open to all authenticated users (not admin-only)
 
 **Auth:**
 - `get_current_user` dependency in `auth.py` — inject via `Depends(get_current_user)`

@@ -35,6 +35,20 @@ def test_admin_delete_tag(admin_headers):
     tags = client.get("/api/tags", headers=headers).json()
     assert not any(t["id"] == tag_id for t in tags)
 
+def test_non_admin_can_delete_tag(client):
+    from tests.conftest import TestingSessionLocal
+    from auth import hash_password
+    import models
+    db = TestingSessionLocal()
+    db.add(models.User(username="regular2", password_hash=hash_password("pw"), role="user"))
+    db.commit()
+    db.close()
+    token = client.post("/api/auth/login", json={"username": "regular2", "password": "pw"}).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    tag_id = client.post("/api/tags", json={"name": "usertag", "color": "#123456"}, headers=headers).json()["id"]
+    resp = client.delete(f"/api/tags/{tag_id}", headers=headers)
+    assert resp.status_code == 204
+
 def test_tag_name_unique(admin_headers):
     client, headers = admin_headers
     client.post("/api/tags", json={"name": "dup", "color": "#fff"}, headers=headers)
