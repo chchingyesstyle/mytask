@@ -1041,6 +1041,19 @@ function showTaskEditForm(t, detail) {
   var notesArea = document.createElement('textarea');
   notesArea.value = t.notes || '';
 
+  var projSel = document.createElement('select');
+  var noProj = document.createElement('option');
+  noProj.value = '';
+  noProj.textContent = '— No project —';
+  projSel.appendChild(noProj);
+  allProjects.forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    if (t.project_id === p.id) opt.selected = true;
+    projSel.appendChild(opt);
+  });
+
   var row2 = document.createElement('div');
   row2.className = 'edit-row-2col';
   row2.appendChild(field('Due Date', dateInp));
@@ -1048,6 +1061,7 @@ function showTaskEditForm(t, detail) {
 
   form.appendChild(field('Title', titleInp));
   form.appendChild(row2);
+  form.appendChild(field('Project', projSel));
   form.appendChild(field('Notes', notesArea));
 
   var actionsDiv = document.createElement('div');
@@ -1079,6 +1093,7 @@ function showTaskEditForm(t, detail) {
       title: titleInp.value.trim(),
       due_date: dateInp.value || null,
       priority: priSel.value,
+      project_id: projSel.value ? parseInt(projSel.value) : null,
       notes: notesArea.value.trim() || null,
     });
   });
