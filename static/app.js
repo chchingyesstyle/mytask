@@ -23,6 +23,20 @@ let currentTimelineOffset = 0;    // days shifted — used in Task 9
 let allStatuses = [];             // statuses for the active project filter (or default set)
 let expandedProjectId = null;
 let projectStatusMap = {};
+var tableSort = { col: null, dir: 'asc' };
+var tableExpanded = {};
+var tableHiddenCols = JSON.parse(localStorage.getItem('tableHiddenCols') || '[]');
+
+var TABLE_COLS = [
+  { key: 'title',      label: 'Title',      sortable: true,  always: true  },
+  { key: 'status',     label: 'Status',     sortable: true,  always: false },
+  { key: 'priority',   label: 'Priority',   sortable: true,  always: false },
+  { key: 'start_date', label: 'Start Date', sortable: true,  always: false },
+  { key: 'due_date',   label: 'Due Date',   sortable: true,  always: false },
+  { key: 'project',    label: 'Project',    sortable: true,  always: false },
+  { key: 'tags',       label: 'Tags',       sortable: false, always: false },
+  { key: 'notes',      label: 'Notes',      sortable: false, always: false }
+];
 
 // Auth
 function getToken() { return localStorage.getItem('mytask_token'); }
@@ -597,11 +611,12 @@ function renderCurrentView() {
   else if (currentView === 'board') renderBoard();
   else if (currentView === 'calendar') renderCalendar();
   else if (currentView === 'timeline') renderTimeline();
+  else if (currentView === 'table') renderTable();
 }
 
 function switchView(view) {
   currentView = view;
-  ['list', 'board', 'calendar', 'timeline'].forEach(function(v) {
+  ['list', 'board', 'calendar', 'timeline', 'table'].forEach(function(v) {
     var el = document.getElementById('view-' + v);
     if (el) el.style.display = v === view ? 'flex' : 'none';
   });
@@ -952,6 +967,501 @@ function renderBoard() {
   addCol.appendChild(addColBtn);
   container.appendChild(addCol);
 }
+
+// ── Table view ──────────────────────────────────────────────────────────────
+
+function buildTableToolbar(toolbar) {
+  toolbar.textContent = '';
+
+  var colBtn = document.createElement('button');
+  colBtn.className = 'btn-secondary';
+  colBtn.style.cssText = 'font-size:11px;padding:4px 10px;position:relative';
+  colBtn.textContent = 'Columns';
+  colBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var existing = document.querySelector('.table-col-picker');
+    if (existing) { existing.remove(); return; }
+    var picker = document.createElement('div');
+    picker.className = 'table-col-picker';
+    TABLE_COLS.forEach(function(col) {
+      if (col.always) return;
+      var lbl = document.createElement('label');
+      var chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.checked = !tableHiddenCols.includes(col.key);
+      chk.addEventListener('change', function() {
+        if (this.checked) {
+          tableHiddenCols = tableHiddenCols.filter(function(k) { return k !== col.key; });
+        } else {
+          if (!tableHiddenCols.includes(col.key)) tableHiddenCols.push(col.key);
+        }
+        localStorage.setItem('tableHiddenCols', JSON.stringify(tableHiddenCols));
+        picker.remove();
+        renderTable();
+      });
+      lbl.appendChild(chk);
+      lbl.appendChild(document.createTextNode(' ' + col.label));
+      picker.appendChild(lbl);
+    });
+    var rect = colBtn.getBoundingClientRect();
+    picker.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+    picker.style.left = rect.left + 'px';
+    document.body.appendChild(picker);
+    document.addEventListener('click', function removePicker() {
+      picker.remove();
+      document.removeEventListener('click', removePicker);
+    });
+  });
+  toolbar.appendChild(colBtn);
+
+  if (tableSort.col) {
+    var sortIndicator = document.createElement('span');
+    sortIndicator.style.cssText = 'font-size:11px;color:var(--text-dim);cursor:pointer';
+    var col = TABLE_COLS.find(function(c) { return c.key === tableSort.col; });
+    sortIndicator.textContent = '↕ ' + (col ? col.label : tableSort.col) + ' ' + (tableSort.dir === 'asc' ? '↑' : '↓') + '  \xd7';
+    sortIndicator.addEventListener('click', function() {
+      tableSort = { col: null, dir: 'asc' };
+      renderTable();
+    });
+    toolbar.appendChild(sortIndicator);
+  }
+}
+
+function getVisibleCols() {
+  return TABLE_COLS.filter(function(c) { return c.always || !tableHiddenCols.includes(c.key); });
+}
+
+function sortedFilteredTasks() {
+  var tasks = filteredTasks().filter(function(t) { return !t.parent_id; });
+  if (!tableSort.col) return tasks;
+  var col = tableSort.col;
+  var dir = tableSort.dir === 'asc' ? 1 : -1;
+  return tasks.slice().sort(function(a, b) {
+    var va, vb;
+    if (col === 'title') { va = (a.title || '').toLowerCase(); vb = (b.title || '').toLowerCase(); return va.localeCompare(vb) * dir; }
+    if (col === 'status') { va = (a.status_name || '').toLowerCase(); vb = (b.status_name || '').toLowerCase(); return va.localeCompare(vb) * dir; }
+    if (col === 'priority') {
+      var order = { high: 0, medium: 1, low: 2 };
+      va = order[a.priority] !== undefined ? order[a.priority] : 3;
+      vb = order[b.priority] !== undefined ? order[b.priority] : 3;
+      return (va - vb) * dir;
+    }
+    if (col === 'project') { va = (a.project_name || '').toLowerCase(); vb = (b.project_name || '').toLowerCase(); return va.localeCompare(vb) * dir; }
+    if (col === 'start_date' || col === 'due_date') {
+      va = a[col] || 'zzzz'; vb = b[col] || 'zzzz';
+      return va.localeCompare(vb) * dir;
+    }
+    return 0;
+  });
+}
+
+function buildTableCell(t, colKey) {
+  var td = document.createElement('td');
+  td.dataset.col = colKey;
+
+  if (colKey === 'title') {
+    td.style.fontWeight = '600';
+    td.textContent = t.title || '';
+    if (!tableExpanded[t.id] && t.subtask_count > 0) {
+      var badge = document.createElement('span');
+      badge.style.cssText = 'margin-left:6px;font-size:10px;color:var(--text-dim);font-weight:400';
+      badge.textContent = '↳ ' + t.subtask_count;
+      td.appendChild(badge);
+    }
+    return td;
+  }
+
+  if (colKey === 'status') {
+    if (t.status_name) {
+      var pill = document.createElement('span');
+      pill.className = 'status-pill';
+      pill.textContent = t.status_name;
+      if (t.status_color) pill.style.background = t.status_color + '33';
+      td.appendChild(pill);
+    } else {
+      td.textContent = '—';
+    }
+    return td;
+  }
+
+  if (colKey === 'priority') {
+    if (t.priority) {
+      var dot = document.createElement('span');
+      dot.style.cssText = 'display:inline-flex;align-items:center;gap:4px';
+      var colors = { high: '#ef4444', medium: '#f59e0b', low: '#6b7280' };
+      var dotCircle = document.createElement('span');
+      dotCircle.style.cssText = 'width:7px;height:7px;border-radius:50%;background:' + (colors[t.priority] || '#6b7280');
+      dot.appendChild(dotCircle);
+      dot.appendChild(document.createTextNode(t.priority));
+      td.appendChild(dot);
+    } else {
+      td.textContent = '—';
+    }
+    return td;
+  }
+
+  if (colKey === 'start_date' || colKey === 'due_date') {
+    var val = t[colKey];
+    if (!val) { td.textContent = '—'; return td; }
+    var isOverdue = colKey === 'due_date' && val < new Date().toISOString().slice(0,10) && t.status_name !== 'Done';
+    td.textContent = (isOverdue ? '⚠ ' : '') + val;
+    if (isOverdue) td.style.color = '#ef4444';
+    return td;
+  }
+
+  if (colKey === 'project') {
+    td.textContent = t.project_name || '—';
+    return td;
+  }
+
+  if (colKey === 'tags') {
+    if (t.tags && t.tags.length) {
+      t.tags.forEach(function(tag) {
+        var p = document.createElement('span');
+        p.className = 'tag-pill';
+        p.textContent = tag.name;
+        p.style.background = hexToRgba(tag.color, 0.2);
+        p.style.color = tag.color;
+        p.style.marginRight = '3px';
+        td.appendChild(p);
+      });
+    } else {
+      td.textContent = '—';
+    }
+    return td;
+  }
+
+  if (colKey === 'notes') {
+    var notes = t.notes || '';
+    td.textContent = notes.length > 40 ? notes.slice(0, 40) + '…' : (notes || '—');
+    return td;
+  }
+
+  return td;
+}
+
+function buildTableRow(t, visibleCols) {
+  var tr = document.createElement('tr');
+  tr.className = 'table-row-root priority-' + (t.priority || 'none');
+  tr.dataset.taskId = t.id;
+
+  var expandTd = document.createElement('td');
+  expandTd.className = 'col-expand';
+  if (t.subtask_count > 0) {
+    expandTd.textContent = tableExpanded[t.id] ? '▼' : '►';
+    expandTd.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (tableExpanded[t.id]) {
+        delete tableExpanded[t.id];
+      } else {
+        tableExpanded[t.id] = true;
+      }
+      renderTable();
+    });
+  }
+  tr.appendChild(expandTd);
+
+  visibleCols.forEach(function(col) {
+    var td = buildTableCell(t, col.key);
+    td.addEventListener('click', function() { openTableCellEdit(t, col.key, td); });
+    tr.appendChild(td);
+  });
+
+  return tr;
+}
+
+function buildSubtaskRow(child, visibleCols) {
+  var tr = document.createElement('tr');
+  tr.className = 'table-row-sub';
+  tr.dataset.taskId = child.id;
+
+  var expandTd = document.createElement('td');
+  expandTd.className = 'col-expand';
+  tr.appendChild(expandTd);
+
+  visibleCols.forEach(function(col) {
+    var td;
+    if (col.key === 'title') {
+      td = document.createElement('td');
+      td.style.paddingLeft = '28px';
+      td.textContent = '↳ ' + (child.title || '');
+    } else {
+      td = buildTableCell(child, col.key);
+    }
+    td.addEventListener('click', function() { openTableCellEdit(child, col.key, td); });
+    tr.appendChild(td);
+  });
+
+  return tr;
+}
+
+function saveTableCell(taskId, field, value, onDone) {
+  var body = {};
+  body[field] = value;
+  fetch('/api/tasks/' + taskId, {
+    method: 'PUT',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+    body: JSON.stringify(body)
+  }).then(function(r) { return r.json(); }).then(function() {
+    loadTasks();
+    if (onDone) onDone();
+  }).catch(function(err) { console.error('saveTableCell failed', err); });
+}
+
+function openTableCellEdit(t, colKey, td) {
+  if (td.classList.contains('table-cell-edit')) return;
+  td.classList.add('table-cell-edit');
+  var original = td.cloneNode(true);
+
+  function cancel() {
+    td.classList.remove('table-cell-edit');
+    while (td.firstChild) td.removeChild(td.firstChild);
+    Array.prototype.forEach.call(original.childNodes, function(node) {
+      td.appendChild(node.cloneNode(true));
+    });
+  }
+
+  if (colKey === 'title') {
+    var inp = document.createElement('input');
+    inp.type = 'text';
+    inp.value = t.title || '';
+    while (td.firstChild) td.removeChild(td.firstChild);
+    td.appendChild(inp);
+    inp.focus();
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && inp.value.trim()) {
+        saveTableCell(t.id, 'title', inp.value.trim());
+      }
+      if (e.key === 'Escape') cancel();
+    });
+    inp.addEventListener('blur', function() {
+      if (inp.value.trim() && inp.value.trim() !== t.title) {
+        saveTableCell(t.id, 'title', inp.value.trim());
+      } else {
+        cancel();
+      }
+    });
+    return;
+  }
+
+  if (colKey === 'status') {
+    var sel = document.createElement('select');
+    allStatuses.forEach(function(s) {
+      var opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.name;
+      if (s.id === t.status_id) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    while (td.firstChild) td.removeChild(td.firstChild);
+    td.appendChild(sel);
+    sel.focus();
+    sel.addEventListener('change', function() { saveTableCell(t.id, 'status_id', parseInt(sel.value, 10)); });
+    sel.addEventListener('blur', cancel);
+    return;
+  }
+
+  if (colKey === 'priority') {
+    var sel2 = document.createElement('select');
+    ['high', 'medium', 'low'].forEach(function(p) {
+      var opt = document.createElement('option');
+      opt.value = p; opt.textContent = p.charAt(0).toUpperCase() + p.slice(1);
+      if (p === t.priority) opt.selected = true;
+      sel2.appendChild(opt);
+    });
+    while (td.firstChild) td.removeChild(td.firstChild);
+    td.appendChild(sel2);
+    sel2.focus();
+    sel2.addEventListener('change', function() { saveTableCell(t.id, 'priority', sel2.value); });
+    sel2.addEventListener('blur', cancel);
+    return;
+  }
+
+  if (colKey === 'start_date' || colKey === 'due_date') {
+    var dateinp = document.createElement('input');
+    dateinp.type = 'date';
+    dateinp.value = t[colKey] || '';
+    while (td.firstChild) td.removeChild(td.firstChild);
+    td.appendChild(dateinp);
+    dateinp.focus();
+    dateinp.addEventListener('blur', function() {
+      saveTableCell(t.id, colKey, dateinp.value || null);
+    });
+    dateinp.addEventListener('keydown', function(e) { if (e.key === 'Escape') cancel(); });
+    return;
+  }
+
+  if (colKey === 'project') {
+    var sel3 = document.createElement('select');
+    var noOpt = document.createElement('option');
+    noOpt.value = ''; noOpt.textContent = 'No project';
+    if (!t.project_id) noOpt.selected = true;
+    sel3.appendChild(noOpt);
+    allProjects.forEach(function(p) {
+      var opt = document.createElement('option');
+      opt.value = p.id; opt.textContent = p.name;
+      if (p.id === t.project_id) opt.selected = true;
+      sel3.appendChild(opt);
+    });
+    while (td.firstChild) td.removeChild(td.firstChild);
+    td.appendChild(sel3);
+    sel3.focus();
+    sel3.addEventListener('change', function() {
+      saveTableCell(t.id, 'project_id', sel3.value ? parseInt(sel3.value, 10) : null);
+    });
+    sel3.addEventListener('blur', cancel);
+    return;
+  }
+
+  if (colKey === 'tags') {
+    var popover = document.createElement('div');
+    popover.className = 'table-col-picker';
+    var currentTagIds = (t.tags || []).map(function(tg) { return tg.id; });
+    allTags.forEach(function(tag) {
+      var lbl = document.createElement('label');
+      var chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.checked = currentTagIds.indexOf(tag.id) !== -1;
+      chk.addEventListener('change', function() {
+        if (this.checked) {
+          currentTagIds.push(tag.id);
+        } else {
+          currentTagIds = currentTagIds.filter(function(id) { return id !== tag.id; });
+        }
+        saveTableCell(t.id, 'tag_ids', currentTagIds);
+      });
+      lbl.appendChild(chk);
+      var dot = document.createElement('span');
+      dot.style.cssText = 'display:inline-block;width:8px;height:8px;border-radius:50%;background:' + tag.color + ';margin:0 4px';
+      lbl.appendChild(dot);
+      lbl.appendChild(document.createTextNode(tag.name));
+      popover.appendChild(lbl);
+    });
+    var rect2 = td.getBoundingClientRect();
+    popover.style.position = 'fixed';
+    popover.style.top = (rect2.bottom + 4) + 'px';
+    popover.style.left = rect2.left + 'px';
+    document.body.appendChild(popover);
+    td.classList.remove('table-cell-edit');
+    var removePopover = function() {
+      popover.remove();
+      document.removeEventListener('click', removePopover);
+    };
+    setTimeout(function() { document.addEventListener('click', removePopover); }, 0);
+    return;
+  }
+
+  if (colKey === 'notes') {
+    var popover2 = document.createElement('div');
+    popover2.className = 'table-notes-popover';
+    popover2.style.position = 'fixed';
+    var rect3 = td.getBoundingClientRect();
+    popover2.style.top = (rect3.bottom + 4) + 'px';
+    popover2.style.left = rect3.left + 'px';
+    var ta = document.createElement('textarea');
+    ta.value = t.notes || '';
+    popover2.appendChild(ta);
+    var saveBtn = document.createElement('button');
+    saveBtn.className = 'btn-primary';
+    saveBtn.style.cssText = 'margin-top:6px;font-size:11px;padding:3px 8px;display:block';
+    saveBtn.textContent = '✓ Save';
+    saveBtn.addEventListener('click', function() {
+      saveTableCell(t.id, 'notes', ta.value || null);
+      popover2.remove();
+    });
+    popover2.appendChild(saveBtn);
+    document.body.appendChild(popover2);
+    ta.focus();
+    td.classList.remove('table-cell-edit');
+    var removeNotes = function(e) {
+      if (!popover2.contains(e.target)) {
+        saveTableCell(t.id, 'notes', ta.value || null);
+        popover2.remove();
+        document.removeEventListener('click', removeNotes);
+      }
+    };
+    setTimeout(function() { document.addEventListener('click', removeNotes); }, 0);
+    return;
+  }
+
+  cancel();
+}
+
+function renderTable() {
+  var toolbar = document.getElementById('table-toolbar');
+  var table = document.getElementById('task-table');
+  if (!toolbar || !table) return;
+
+  buildTableToolbar(toolbar);
+
+  var visibleCols = getVisibleCols();
+  var tasks = sortedFilteredTasks();
+
+  // Build thead
+  var thead = document.createElement('thead');
+  var headerRow = document.createElement('tr');
+  var expandTh = document.createElement('th');
+  expandTh.className = 'col-expand';
+  headerRow.appendChild(expandTh);
+  visibleCols.forEach(function(col) {
+    var th = document.createElement('th');
+    th.dataset.col = col.key;
+    th.textContent = col.label;
+    if (col.sortable) {
+      th.className = 'sortable';
+      if (tableSort.col === col.key) {
+        th.textContent += ' ' + (tableSort.dir === 'asc' ? '↑' : '↓');
+      }
+      th.addEventListener('click', function() {
+        if (tableSort.col === col.key) {
+          if (tableSort.dir === 'asc') {
+            tableSort = { col: col.key, dir: 'desc' };
+          } else {
+            tableSort = { col: null, dir: 'asc' };
+          }
+        } else {
+          tableSort = { col: col.key, dir: 'asc' };
+        }
+        renderTable();
+      });
+    }
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+
+  // Build tbody
+  var tbody = document.createElement('tbody');
+  tasks.forEach(function(t) {
+    tbody.appendChild(buildTableRow(t, visibleCols));
+    if (tableExpanded[t.id] && t.children && t.children.length) {
+      t.children.forEach(function(child) {
+        tbody.appendChild(buildSubtaskRow(child, visibleCols));
+      });
+    }
+  });
+
+  // New task row
+  var newRow = document.createElement('tr');
+  newRow.className = 'table-new-row';
+  var newTd = document.createElement('td');
+  newTd.colSpan = visibleCols.length + 1;
+  newTd.textContent = '+ New task…';
+  newRow.appendChild(newTd);
+  newRow.addEventListener('click', function() {
+    var projectId = null;
+    if (activeFilter && activeFilter.startsWith('project:')) {
+      projectId = parseInt(activeFilter.split(':')[1], 10);
+    }
+    openNewTaskModal(null, projectId);
+  });
+  tbody.appendChild(newRow);
+
+  while (table.firstChild) table.removeChild(table.firstChild);
+  table.appendChild(thead);
+  table.appendChild(tbody);
+}
+
+// ── End table view ───────────────────────────────────────────────────────────
 
 function buildBoardCard(t) {
   var card = document.createElement('div');
