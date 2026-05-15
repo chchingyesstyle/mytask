@@ -918,12 +918,27 @@ function buildBoardCard(t) {
   var metaParts = [];
   if (t.start_date) metaParts.push('Start ' + t.start_date);
   if (t.due_date) metaParts.push('Due ' + t.due_date);
-  if (t.tags && t.tags.length > 0) metaParts.push(t.tags.map(function(tg) { return tg.name; }).join(', '));
   if (metaParts.length) {
     var meta = document.createElement('div');
     meta.className = 'board-card-meta';
     meta.textContent = metaParts.join(' · ');
     card.appendChild(meta);
+  }
+  if (t.tags && t.tags.length > 0) {
+    var pillRow = document.createElement('div');
+    pillRow.className = 'tag-pills';
+    t.tags.forEach(function(tag) {
+      var pill = document.createElement('span');
+      pill.className = 'tag-pill';
+      pill.textContent = tag.name;
+      pill.style.cssText = (
+        'background:' + hexToRgba(tag.color, 0.2) + ';' +
+        'color:' + tag.color + ';' +
+        'border-color:' + hexToRgba(tag.color, 0.35) + ';'
+      );
+      pillRow.appendChild(pill);
+    });
+    card.appendChild(pillRow);
   }
   return card;
 }
