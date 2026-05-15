@@ -17,6 +17,9 @@ _DEFAULT_STATUSES = [
 class ProjectCreate(BaseModel):
     name: str
 
+class ProjectUpdate(BaseModel):
+    name: str
+
 @router.get("")
 def list_projects(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     query = db.query(models.Project)
@@ -41,6 +44,18 @@ def create_project(req: ProjectCreate, db: Session = Depends(get_db), current_us
         "owner_id": project.owner_id,
         "statuses": [_status_to_dict(s) for s in project.statuses],
     }
+
+@router.put("/{project_id}")
+def update_project(project_id: int, req: ProjectUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project.owner_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    project.name = req.name
+    db.commit()
+    db.refresh(project)
+    return {"id": project.id, "name": project.name, "owner_id": project.owner_id}
 
 @router.delete("/{project_id}", status_code=204)
 def delete_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):

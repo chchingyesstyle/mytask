@@ -62,3 +62,34 @@ def test_project_creation_seeds_statuses(admin_headers):
     assert data[1]["name"] == "In Progress"
     assert data[2]["name"] == "Done"
     assert all(s["project_id"] == proj_id for s in data)
+
+def test_rename_project(admin_headers):
+    client, headers = admin_headers
+    proj_id = client.post("/api/projects", json={"name": "Old Name"}, headers=headers).json()["id"]
+    resp = client.put(f"/api/projects/{proj_id}", json={"name": "New Name"}, headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["name"] == "New Name"
+    assert data["id"] == proj_id
+
+def test_rename_project_not_owner(client):
+    from tests.conftest import TestingSessionLocal
+    from auth import hash_password
+    import models
+    db = TestingSessionLocal()
+    db.add(models.User(username="alice", password_hash=hash_password("pw"), role="user"))
+    db.add(models.User(username="bob", password_hash=hash_password("pw"), role="user"))
+    db.commit()
+    db.close()
+    alice_token = client.post("/api/auth/login", json={"username": "alice", "password": "pw"}).json()["access_token"]
+    bob_token = client.post("/api/auth/login", json={"username": "bob", "password": "pw"}).json()["access_token"]
+    alice_h = {"Authorization": f"Bearer {alice_token}"}
+    bob_h = {"Authorization": f"Bearer {bob_token}"}
+    proj_id = client.post("/api/projects", json={"name": "Alice Project"}, headers=alice_h).json()["id"]
+    resp = client.put(f"/api/projects/{proj_id}", json={"name": "Hacked"}, headers=bob_h)
+    assert resp.status_code == 403
+
+def test_rename_project_not_found(admin_headers):
+    client, headers = admin_headers
+    resp = client.put("/api/projects/9999", json={"name": "Ghost"}, headers=headers)
+    assert resp.status_code == 404
