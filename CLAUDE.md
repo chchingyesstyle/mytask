@@ -55,6 +55,7 @@ docker cp static/index.html mytask-mytask-1:/app/static/index.html
 - `POST /api/tags` and `DELETE /api/tags/{id}` — open to all authenticated users (not admin-only)
 - `POST /api/tasks/{id}/ai-action` — body `{action, custom_prompt?}`; action one of meeting_prep/draft_email/summarise/action_items/custom
 - `GET /api/kb` accepts `?global=true` or `?task_id=N`; `global` is a Python reserved word — use `Query(alias="global")` in FastAPI
+- `PUT /api/auth/password` — body `{current_password, new_password}`; verifies current hash, min 6 chars; any authenticated user
 
 **Auth:**
 - `get_current_user` dependency in `auth.py` — inject via `Depends(get_current_user)`
@@ -79,12 +80,19 @@ docker cp static/index.html mytask-mytask-1:/app/static/index.html
 - Nav item click listeners go in `DOMContentLoaded`, NOT inside `initApp()` — placing them in `initApp()` accumulates duplicate listeners on every login call
 - Admin users need both `admin-link` (sidebar) and `admin-link-drawer` (mobile drawer) revealed in `initApp()`
 - CSS z-index stack: `.modal-overlay` 400 > `.mobile-drawer` 300 > `.drawer-overlay` 299 > `.chat-fab`/`.chat-widget` 200
+
+**Mobile / CSS gotchas:**
+- `overflow-y: auto` on a flex item does nothing without `min-height: 0` — the item won't shrink below its content height
+- iOS Safari changes viewport height as the address bar shows/hides — never rely on items pinned to the bottom of a flex container being visible; put them *inside* the scroll container with a `flex:1` `.drawer-spacer` div above them
+- Use `height: 100vh; height: 100dvh` (both declarations) for full-height fixed elements on iOS
+- Add `-webkit-overflow-scrolling: touch` to any scrollable container for iOS momentum scrolling
 - `body.light` CSS class overrides all `--bg-*`/`--border`/`--text` vars; `applyTheme(theme)` syncs class + localStorage + button labels
 - `TABLE_COLS`, `tableSort`, `tableExpanded`, `tableHiddenCols` (localStorage) — table view state vars
 - `renderTable()`, `buildTableRow()`, `buildSubtaskRow()`, `openTableCellEdit()` — table view; wired via `renderCurrentView()`
 - `renderKBPage()`, `buildKBDocCard()` — KB sidebar page; register in `navigateTo()` and add click listeners in `DOMContentLoaded`
 - `renderTaskDocs(task, detailEl)`, `renderTaskAIActions(task, detailEl)` — called from `toggleTask()` when card expands
 - Calendar and timeline both span `start_date` → `due_date`; don't index only by `due_date`
+- `showToast(msg)` — fixed bottom notification; use for save/action confirmations
 
 **AI agent:**
 - Tools: `create_task`, `update_task`, `delete_task`, `list_tasks`, `create_subtask`, `add_tag_to_task`, `remove_tag_from_task`
@@ -101,7 +109,7 @@ docker cp static/index.html mytask-mytask-1:/app/static/index.html
 - `tests/conftest.py` — `client` (unauthenticated), `seeded_client` (has data), `admin_headers` (returns `(client, headers)` tuple)
 - Tests use in-memory SQLite — the `conftest.py` overrides the engine before app import
 - Async AI calls in dashboard/agent are mocked with `AsyncMock` + `patch("routers.dashboard.client.chat.completions.create", ...)`
-- 99 tests; all must pass before merging
+- 100 tests; all must pass before merging
 - `seeded_client` fixture takes `monkeypatch` and sets `ADMIN_PASSWORD` env var — required since seed.py reads it from env
 
 ## Deployment

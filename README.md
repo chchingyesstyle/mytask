@@ -32,6 +32,7 @@ A personal task manager with an integrated AI assistant, built on FastAPI, SQLit
 ### UI & UX
 - **Light / dark mode** — Toggle in sidebar; persists across sessions via localStorage
 - **Mobile responsive** — Hamburger drawer nav for small screens
+- **Change password** — Any user can change their own password from the sidebar footer
 - **Admin panel** — Manage users and tags
 
 ## Tech Stack
@@ -133,6 +134,7 @@ Open `http://localhost:8080`. Login: `admin` / value of `ADMIN_PASSWORD`.
 | PUT | `/api/tasks/{id}` | user | Update task (supports null to clear fields) |
 | DELETE | `/api/tasks/{id}` | user | Delete task (cascades) |
 | POST | `/api/tasks/{id}/ai-action` | user | AI action: meeting_prep / draft_email / summarise / action_items / custom |
+| PUT | `/api/auth/password` | user | Change own password (requires current password) |
 | GET | `/api/dashboard` | user | Counts + AI briefing |
 | GET/POST/DELETE | `/api/tags` | user | Tag management |
 | GET/POST/DELETE | `/api/projects` | user | Project management |
@@ -147,7 +149,7 @@ Open `http://localhost:8080`. Login: `admin` / value of `ADMIN_PASSWORD`.
 python3 -m pytest -v
 ```
 
-99 tests covering auth, tasks, subtasks, tags, dashboard, projects, users, AI agent tools, and KB endpoints.
+100 tests covering auth, tasks, subtasks, tags, dashboard, projects, users, AI agent tools, and KB endpoints.
 
 ## Data Persistence
 
