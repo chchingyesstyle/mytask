@@ -284,7 +284,7 @@ function buildTaskCard(t) {
   editBtn.addEventListener('click', function(e) {
     e.stopPropagation();
     if (editingTaskId === t.id) {
-      hideTaskEditForm(detail, t.id);
+      hideTaskEditForm(t.id);
     } else {
       if (editingTaskId !== null) {
         var prevForm = document.getElementById('task-edit-form-' + editingTaskId);
@@ -385,6 +385,7 @@ function renderTasks() {
 }
 
 function toggleTask(id) {
+  editingTaskId = null;
   expandedTaskId = (expandedTaskId === id) ? null : id;
   renderTasks();
 }
@@ -452,6 +453,7 @@ function showTaskEditForm(t, detail) {
   var saveBtn = document.createElement('button');
   saveBtn.textContent = 'Save';
   saveBtn.style.cssText = 'font-size:11px;padding:4px 10px';
+  saveBtn.disabled = !titleInp.value.trim();
 
   var cancelBtn = document.createElement('button');
   cancelBtn.className = 'btn-secondary';
@@ -464,7 +466,7 @@ function showTaskEditForm(t, detail) {
 
   cancelBtn.addEventListener('click', function(e) {
     e.stopPropagation();
-    hideTaskEditForm(detail, t.id);
+    hideTaskEditForm(t.id);
   });
 
   saveBtn.addEventListener('click', function(e) {
@@ -479,7 +481,7 @@ function showTaskEditForm(t, detail) {
   });
 
   form.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') { e.stopPropagation(); hideTaskEditForm(detail, t.id); }
+    if (e.key === 'Escape') { e.stopPropagation(); hideTaskEditForm(t.id); }
   });
 
   actionsDiv.appendChild(cancelBtn);
@@ -491,7 +493,7 @@ function showTaskEditForm(t, detail) {
   titleInp.select();
 }
 
-function hideTaskEditForm(detail, taskId) {
+function hideTaskEditForm(taskId) {
   editingTaskId = null;
   var form = document.getElementById('task-edit-form-' + taskId);
   if (form) form.remove();
