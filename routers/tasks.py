@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 class TaskCreate(BaseModel):
     title: str
-    status: str = "todo"
+    status_id: Optional[int] = None
     priority: str = "medium"
     due_date: Optional[date] = None
     project_id: Optional[int] = None
@@ -21,7 +21,7 @@ class TaskCreate(BaseModel):
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
-    status: Optional[str] = None
+    status_id: Optional[int] = None
     priority: Optional[str] = None
     due_date: Optional[date] = None
     project_id: Optional[int] = None
@@ -29,10 +29,12 @@ class TaskUpdate(BaseModel):
     tag_ids: Optional[list[int]] = None
 
 def task_to_dict(task: models.Task) -> dict:
+    status_name = task.status_rel.name if task.status_rel else "Todo"
     return {
         "id": task.id,
         "title": task.title,
-        "status": task.status,
+        "status_id": task.status_id,
+        "status_name": status_name,
         "priority": task.priority,
         "due_date": task.due_date.isoformat() if task.due_date else None,
         "project_id": task.project_id,
@@ -44,7 +46,10 @@ def task_to_dict(task: models.Task) -> dict:
         "updated_at": task.updated_at.isoformat() if task.updated_at else None,
         "tags": [{"id": t.id, "name": t.name, "color": t.color} for t in task.tags],
         "subtask_count": len(task.children),
-        "completed_subtasks": sum(1 for c in task.children if c.status == "done"),
+        "completed_subtasks": sum(
+            1 for c in task.children
+            if c.status_rel and c.status_rel.name.lower() == "done"
+        ),
     }
 
 @router.get("")
@@ -63,13 +68,14 @@ def list_tasks(
         query = query.filter(models.Task.owner_id == current_user.id)
     elif user_id is not None:
         query = query.filter(models.Task.owner_id == user_id)
-    # parent_id filter: None means root tasks only, int means children of that task
     if parent_id is None:
         query = query.filter(models.Task.parent_id == None)  # noqa: E711
     else:
         query = query.filter(models.Task.parent_id == parent_id)
     if status is not None:
-        query = query.filter(models.Task.status == status)
+        query = query.join(models.Status, models.Task.status_id == models.Status.id).filter(
+            models.Status.name.ilike(status)
+        )
     if priority is not None:
         query = query.filter(models.Task.priority == priority)
     if project_id is not None:
@@ -104,13 +110,28 @@ def create_task(
 ):
     task_data = req.model_dump(exclude={"tag_ids"})
 
-    # Validate parent_id ownership if provided
     if task_data.get("parent_id"):
         parent = db.query(models.Task).filter(models.Task.id == task_data["parent_id"]).first()
         if not parent:
             raise HTTPException(status_code=404, detail="Parent task not found")
         if parent.owner_id != current_user.id and current_user.role != "admin":
             raise HTTPException(status_code=403, detail="Not authorized to attach to this parent")
+
+    # Default status_id to first status of the task's project (or default set)
+    if task_data.get("status_id") is None:
+        pid = task_data.get("project_id")
+        first_status = (
+            db.query(models.Status)
+            .filter(
+                models.Status.project_id == pid
+                if pid is not None
+                else models.Status.project_id == None  # noqa: E711
+            )
+            .order_by(models.Status.position)
+            .first()
+        )
+        if first_status:
+            task_data["status_id"] = first_status.id
 
     task = models.Task(**task_data, owner_id=current_user.id)
     db.add(task)

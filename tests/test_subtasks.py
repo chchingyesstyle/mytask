@@ -10,7 +10,6 @@ def test_subtask_count_on_parent(admin_headers):
     parent = client.post("/api/tasks", json={"title": "Parent"}, headers=headers).json()
     client.post("/api/tasks", json={"title": "Child 1", "parent_id": parent["id"]}, headers=headers)
     client.post("/api/tasks", json={"title": "Child 2", "parent_id": parent["id"]}, headers=headers)
-    client.put(f"/api/tasks/{parent['id']}", json={"status": "in-progress"}, headers=headers)
     tasks = client.get("/api/tasks", headers=headers).json()
     p = next(t for t in tasks if t["id"] == parent["id"])
     assert p["subtask_count"] == 2
@@ -20,7 +19,7 @@ def test_completed_subtasks_count(admin_headers):
     client, headers = admin_headers
     parent = client.post("/api/tasks", json={"title": "Parent"}, headers=headers).json()
     child = client.post("/api/tasks", json={"title": "Child", "parent_id": parent["id"]}, headers=headers).json()
-    client.put(f"/api/tasks/{child['id']}", json={"status": "done"}, headers=headers)
+    client.put(f"/api/tasks/{child['id']}", json={"status_id": 3}, headers=headers)
     tasks = client.get("/api/tasks", headers=headers).json()
     p = next(t for t in tasks if t["id"] == parent["id"])
     assert p["completed_subtasks"] == 1

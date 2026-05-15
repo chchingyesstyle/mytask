@@ -46,7 +46,7 @@ def test_dashboard_done_tasks_excluded(admin_headers):
     from datetime import date, timedelta
     client, headers = admin_headers
     yesterday = (date.today() - timedelta(days=1)).isoformat()
-    client.post("/api/tasks", json={"title": "Done Overdue", "due_date": yesterday, "status": "done"}, headers=headers)
+    client.post("/api/tasks", json={"title": "Done Overdue", "due_date": yesterday, "status_id": 3}, headers=headers)
     with patch("routers.dashboard.client.chat.completions.create", new=AsyncMock(side_effect=Exception("skip"))):
         resp = client.get("/api/dashboard", headers=headers)
     assert resp.json()["overdue"] == 0

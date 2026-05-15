@@ -16,9 +16,12 @@ async def dashboard(
     today = date.today()
     week_end = today + timedelta(days=7)
 
+    done_status_ids = [
+        s.id for s in db.query(models.Status).filter(models.Status.name.ilike("done")).all()
+    ]
     base = db.query(models.Task).filter(
         models.Task.owner_id == current_user.id,
-        models.Task.status != "done",
+        ~models.Task.status_id.in_(done_status_ids) if done_status_ids else True,
     )
 
     overdue_tasks = base.filter(models.Task.due_date < today).all()
