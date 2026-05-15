@@ -108,6 +108,7 @@ def test_delete_status_reassigns_tasks(admin_headers):
         headers=headers).json()["id"]
     resp = client.delete(f"/api/statuses/{s2}", headers=headers)
     assert resp.status_code == 204
+    # task_to_dict does not yet return status_id — this test passes after Task 3
     task = client.get(f"/api/tasks/{task_id}", headers=headers).json()
     assert task["status_id"] == s1
 

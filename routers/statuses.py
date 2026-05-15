@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy import func
 from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.orm import Session
@@ -60,9 +61,10 @@ def create_status(
             raise HTTPException(404, "Project not found")
         if project.owner_id != current_user.id and current_user.role != "admin":
             raise HTTPException(403, "Not authorized")
-    max_pos = db.query(models.Status).filter(
+    result = db.query(func.max(models.Status.position)).filter(
         models.Status.project_id == req.project_id
-    ).count()
+    ).scalar()
+    max_pos = (result + 1) if result is not None else 0
     status = models.Status(
         name=req.name, color=req.color, position=max_pos, project_id=req.project_id
     )
