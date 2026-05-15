@@ -1,3 +1,4 @@
+import os
 from database import SessionLocal, engine
 from models import User, Status
 from auth import hash_password
@@ -8,9 +9,15 @@ def seed_admin(db=None):
         db = SessionLocal()
         close = True
     try:
-        if not db.query(User).filter(User.username == "admin").first():
-            db.add(User(username="admin", password_hash=hash_password("yesasia"), role="admin"))
-            db.commit()
+        password = os.environ.get("ADMIN_PASSWORD")
+        if not password:
+            raise RuntimeError("ADMIN_PASSWORD environment variable is not set")
+        admin = db.query(User).filter(User.username == "admin").first()
+        if admin:
+            admin.password_hash = hash_password(password)
+        else:
+            db.add(User(username="admin", password_hash=hash_password(password), role="admin"))
+        db.commit()
         # Seed default status set (project_id = NULL) if not present
         if db.query(Status).filter(Status.project_id == None).count() == 0:  # noqa: E711
             db.add_all([

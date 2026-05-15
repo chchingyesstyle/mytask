@@ -47,7 +47,8 @@ def client(setup_db):
     app.dependency_overrides.clear()
 
 @pytest.fixture
-def seeded_client(client):
+def seeded_client(client, monkeypatch):
+    monkeypatch.setenv("ADMIN_PASSWORD", "yesasia")
     from seed import seed_admin
     db = TestingSessionLocal()
     seed_admin(db)
