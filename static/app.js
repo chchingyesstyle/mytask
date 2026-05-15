@@ -84,6 +84,17 @@ function logout() {
   location.reload();
 }
 
+function showToast(msg) {
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);' +
+    'background:var(--bg-card);border:1px solid var(--border);color:var(--text);' +
+    'padding:8px 18px;border-radius:var(--r);font-size:12px;z-index:500;' +
+    'box-shadow:0 4px 12px rgba(0,0,0,.3);pointer-events:none;';
+  document.body.appendChild(t);
+  setTimeout(function() { t.remove(); }, 2500);
+}
+
 async function initApp() {
   if (!getToken()) { showLogin(); return; }
   try {
@@ -3064,6 +3075,74 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('logout-btn').addEventListener('click', logout);
   var drawerLogout = document.getElementById('drawer-logout-btn');
   if (drawerLogout) drawerLogout.addEventListener('click', logout);
+
+  function openChangePasswordModal() {
+    document.getElementById('cp-current').value = '';
+    document.getElementById('cp-new').value = '';
+    document.getElementById('cp-confirm').value = '';
+    var err = document.getElementById('cp-error');
+    err.style.display = 'none';
+    err.textContent = '';
+    document.getElementById('change-password-modal').style.display = 'flex';
+    document.getElementById('cp-current').focus();
+    if (drawerOpen) toggleDrawer();
+  }
+  function closeChangePasswordModal() {
+    document.getElementById('change-password-modal').style.display = 'none';
+  }
+  function saveChangePassword() {
+    var current = document.getElementById('cp-current').value;
+    var nw = document.getElementById('cp-new').value;
+    var confirm = document.getElementById('cp-confirm').value;
+    var err = document.getElementById('cp-error');
+    err.style.display = 'none';
+    if (!current || !nw || !confirm) {
+      err.textContent = 'All fields are required.'; err.style.display = 'block'; return;
+    }
+    if (nw.length < 6) {
+      err.textContent = 'New password must be at least 6 characters.'; err.style.display = 'block'; return;
+    }
+    if (nw !== confirm) {
+      err.textContent = 'New passwords do not match.'; err.style.display = 'block'; return;
+    }
+    var saveBtn = document.getElementById('cp-save-btn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+    fetch('/api/auth/password', {
+      method: 'PUT',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+      body: JSON.stringify({ current_password: current, new_password: nw })
+    }).then(function(r) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save';
+      if (r.ok) {
+        closeChangePasswordModal();
+        showToast('Password changed successfully');
+      } else {
+        return r.json().then(function(d) {
+          err.textContent = d.detail || 'Failed to change password.';
+          err.style.display = 'block';
+        });
+      }
+    }).catch(function() {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save';
+      err.textContent = 'Network error, please try again.';
+      err.style.display = 'block';
+    });
+  }
+
+  document.getElementById('change-password-btn').addEventListener('click', openChangePasswordModal);
+  var drawerCPBtn = document.getElementById('drawer-change-password-btn');
+  if (drawerCPBtn) drawerCPBtn.addEventListener('click', openChangePasswordModal);
+  document.getElementById('cp-save-btn').addEventListener('click', saveChangePassword);
+  document.getElementById('cp-cancel-btn').addEventListener('click', closeChangePasswordModal);
+  document.getElementById('change-password-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeChangePasswordModal();
+  });
+  document.getElementById('cp-confirm').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') saveChangePassword();
+  });
   document.getElementById('login-password').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') login();
   });

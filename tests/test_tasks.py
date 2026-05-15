@@ -169,3 +169,28 @@ def test_task_ai_action(admin_headers):
     assert r.status_code == 200
     data = r.json()
     assert "result" in data
+
+def test_change_password(admin_headers):
+    client, headers = admin_headers
+    # Wrong current password
+    r = client.put("/api/auth/password",
+                   json={"current_password": "wrongpass", "new_password": "newpass123"},
+                   headers=headers)
+    assert r.status_code == 400
+    assert "incorrect" in r.json()["detail"].lower()
+
+    # Too short new password
+    r = client.put("/api/auth/password",
+                   json={"current_password": "yesasia", "new_password": "abc"},
+                   headers=headers)
+    assert r.status_code == 400
+
+    # Successful change
+    r = client.put("/api/auth/password",
+                   json={"current_password": "yesasia", "new_password": "newpass123"},
+                   headers=headers)
+    assert r.status_code == 200
+
+    # Can log in with new password
+    r2 = client.post("/api/auth/login", json={"username": "admin", "password": "newpass123"})
+    assert r2.status_code == 200
