@@ -626,3 +626,35 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
   border-top: 1px solid var(--border);
 }
 .sidebar-theme-toggle:hover { color: var(--text); }
+
+/* ── Table view ── */
+.table-toolbar { display:flex; align-items:center; gap:8px; padding:8px 12px;
+  border-bottom:1px solid var(--border); background:var(--bg-panel); flex-shrink:0; }
+.table-scroll { overflow-x:auto; overflow-y:auto; flex:1; }
+.task-table { width:100%; border-collapse:collapse; font-size:12px; min-width:600px; }
+.task-table thead th { padding:6px 10px; text-align:left; color:var(--text-dim);
+  font-weight:600; background:var(--bg-panel); border-bottom:2px solid var(--border);
+  white-space:nowrap; user-select:none; }
+.task-table thead th.sortable { cursor:pointer; }
+.task-table thead th.sortable:hover { color:var(--text); }
+.task-table tbody tr { border-bottom:1px solid var(--border); }
+.task-table tbody tr:hover { background:rgba(255,255,255,.02); }
+body.light .task-table tbody tr:hover { background:rgba(0,0,0,.02); }
+.task-table td { padding:6px 10px; vertical-align:middle; color:var(--text); }
+.table-row-sub td { background:rgba(74,144,217,.02); color:var(--text-dim); font-size:11px; }
+.table-row-sub td:first-child { border-left:2px solid var(--accent); }
+.col-expand { width:24px; text-align:center; cursor:pointer; color:var(--text-dim); font-size:10px; }
+.table-new-row td { color:var(--text-dim); font-size:11px; cursor:pointer; padding:8px 10px; }
+.table-new-row:hover td { color:var(--accent); }
+.table-cell-edit input, .table-cell-edit select { font-size:12px; padding:2px 6px;
+  background:var(--bg-input); border:1px solid var(--accent); border-radius:var(--r);
+  color:var(--text); outline:none; width:100%; box-sizing:border-box; }
+.table-notes-popover { position:absolute; background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--r); padding:8px; z-index:50; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+.table-notes-popover textarea { width:200px; height:120px; resize:vertical;
+  font-size:12px; font-family:inherit; background:var(--bg-input);
+  border:1px solid var(--border); color:var(--text); border-radius:var(--r); padding:6px; }
+.table-col-picker { position:absolute; background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--r); padding:8px; z-index:50; min-width:160px; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+.table-col-picker label { display:flex; align-items:center; gap:6px; padding:4px 0;
+  font-size:12px; cursor:pointer; color:var(--text); }

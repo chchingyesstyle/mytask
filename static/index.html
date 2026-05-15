@@ -106,6 +106,7 @@
           <button class="view-tab" data-view="board" id="view-tab-board">⊞ Board</button>
           <button class="view-tab" data-view="calendar">📅 Calendar</button>
           <button class="view-tab" data-view="timeline">⟶ Timeline</button>
+          <button class="view-tab" data-view="table">&#8862; Table</button>
         </div>
 
         <!-- Filter bar (shared across all views) -->
@@ -149,6 +150,14 @@
           </div>
           <div id="timeline-scroll" class="timeline-scroll">
             <div id="timeline-rows" class="timeline-rows"></div>
+          </div>
+        </div>
+
+        <!-- Table view -->
+        <div id="view-table" class="view-container" style="display:none">
+          <div id="table-toolbar" class="table-toolbar"></div>
+          <div id="table-scroll" class="table-scroll">
+            <table id="task-table" class="task-table"></table>
           </div>
         </div>
 
