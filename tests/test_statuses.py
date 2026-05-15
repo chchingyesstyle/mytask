@@ -88,27 +88,26 @@ def test_update_status(admin_headers):
 def test_delete_status_last_rejected(admin_headers):
     client, headers = admin_headers
     proj_id = client.post("/api/projects", json={"name": "P"}, headers=headers).json()["id"]
-    sid = client.post("/api/statuses",
-        json={"name": "Only", "color": "#fff", "project_id": proj_id},
-        headers=headers).json()["id"]
-    resp = client.delete(f"/api/statuses/{sid}", headers=headers)
+    # Project seeds 3 statuses. Delete 2 of them, then try to delete the last.
+    statuses = client.get(f"/api/statuses?project_id={proj_id}", headers=headers).json()
+    assert len(statuses) == 3
+    client.delete(f"/api/statuses/{statuses[0]['id']}", headers=headers)
+    client.delete(f"/api/statuses/{statuses[1]['id']}", headers=headers)
+    resp = client.delete(f"/api/statuses/{statuses[2]['id']}", headers=headers)
     assert resp.status_code == 400
 
 def test_delete_status_reassigns_tasks(admin_headers):
     client, headers = admin_headers
     proj_id = client.post("/api/projects", json={"name": "P"}, headers=headers).json()["id"]
-    s1 = client.post("/api/statuses",
-        json={"name": "First", "color": "#fff", "project_id": proj_id},
-        headers=headers).json()["id"]
-    s2 = client.post("/api/statuses",
-        json={"name": "Second", "color": "#aaa", "project_id": proj_id},
-        headers=headers).json()["id"]
+    # Use the seeded statuses (position 0 = Todo, position 1 = In Progress)
+    statuses = client.get(f"/api/statuses?project_id={proj_id}", headers=headers).json()
+    s1 = statuses[0]["id"]  # first by position
+    s2 = statuses[1]["id"]  # second by position
     task_id = client.post("/api/tasks",
         json={"title": "T", "project_id": proj_id, "status_id": s2},
         headers=headers).json()["id"]
     resp = client.delete(f"/api/statuses/{s2}", headers=headers)
     assert resp.status_code == 204
-    # task_to_dict does not yet return status_id — this test passes after Task 3
     task = client.get(f"/api/tasks/{task_id}", headers=headers).json()
     assert task["status_id"] == s1
 
@@ -117,14 +116,13 @@ def test_delete_status_reassigns_tasks(admin_headers):
 def test_reorder_statuses(admin_headers):
     client, headers = admin_headers
     proj_id = client.post("/api/projects", json={"name": "P"}, headers=headers).json()["id"]
-    s1 = client.post("/api/statuses",
-        json={"name": "A", "color": "#fff", "project_id": proj_id},
-        headers=headers).json()["id"]
-    s2 = client.post("/api/statuses",
-        json={"name": "B", "color": "#aaa", "project_id": proj_id},
-        headers=headers).json()["id"]
-    resp = client.put("/api/statuses/reorder", json={"ids": [s2, s1]}, headers=headers)
+    # Use the 3 seeded statuses (Todo, In Progress, Done)
+    statuses = client.get(f"/api/statuses?project_id={proj_id}", headers=headers).json()
+    s1, s2, s3 = statuses[0]["id"], statuses[1]["id"], statuses[2]["id"]
+    # Reorder: s2, s3, s1
+    resp = client.put("/api/statuses/reorder", json={"ids": [s2, s3, s1]}, headers=headers)
     assert resp.status_code == 200
     listed = client.get(f"/api/statuses?project_id={proj_id}", headers=headers).json()
     assert listed[0]["id"] == s2
-    assert listed[1]["id"] == s1
+    assert listed[1]["id"] == s3
+    assert listed[2]["id"] == s1
