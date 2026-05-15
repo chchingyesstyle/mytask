@@ -288,7 +288,8 @@ async function loadTasks() {
   var resp = await fetch('/api/tasks', { headers: authHeaders() });
   if (!resp.ok) { if (resp.status === 401) showLogin(); return; }
   allTasks = await resp.json();
-  await loadStatuses();  // load default statuses
+  var _pid = activeFilter.indexOf('project:') === 0 ? parseInt(activeFilter.split(':')[1]) : undefined;
+  await loadStatuses(_pid);
   renderTasks();
   updateOverdueBadge();
   loadDashboard();
