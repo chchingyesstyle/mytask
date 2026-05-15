@@ -3062,6 +3062,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   document.getElementById('login-btn').addEventListener('click', login);
   document.getElementById('logout-btn').addEventListener('click', logout);
+  var drawerLogout = document.getElementById('drawer-logout-btn');
+  if (drawerLogout) drawerLogout.addEventListener('click', logout);
   document.getElementById('login-password').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') login();
   });
