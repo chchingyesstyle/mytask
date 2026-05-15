@@ -10,7 +10,9 @@ A personal task manager with an integrated AI assistant, built on FastAPI, SQLit
 - **AI daily briefing** — Dashboard panel showing overdue/today/this-week counts with an AI-generated focus note
 - **AI chat assistant** — Conversational AI that can create tasks, sub-tasks, assign tags, and update status via tool calls
 - **Projects** — Group tasks under named projects
-- **Admin panel** — Manage users and tags
+- **Inline task editing** — ✏ Edit button on expanded task cards to update title, due date, priority, and notes without leaving the page
+- **Inline step editing** — ✏ pencil button on each subtask row to edit title and due date in-place
+- **Admin panel** — Manage users and tags (scrollable, accessible on any screen height)
 
 ## Tech Stack
 

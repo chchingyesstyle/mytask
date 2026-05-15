@@ -41,6 +41,7 @@ python3 -m pytest tests/test_tasks.py -v
 - `GET /api/tasks` returns root tasks only by default; pass `?parent_id=N` for children
 - `task_to_dict()` in `routers/tasks.py` must include `tags`, `subtask_count`, `completed_subtasks` — the frontend depends on all three
 - Tag assignment after task creation requires `db.flush()` first (to get the task ID before commit)
+- `PUT /api/tasks/{id}` uses `req.model_fields_set` (not `model_dump(exclude_none=True)`) to iterate update fields — this allows explicitly-sent `null` values (e.g. clearing `due_date` or `notes`) to correctly set the column to NULL
 
 **Auth:**
 - `get_current_user` dependency in `auth.py` — inject via `Depends(get_current_user)`
@@ -50,6 +51,14 @@ python3 -m pytest tests/test_tasks.py -v
 - `hexToRgba(hex, alpha)` helper converts tag hex colours to rgba for inline styles
 - Tag pills get background/color set inline by JS — `.tag-pill` CSS class is structural only
 - `loadDashboard()` is called from `loadTasks()` on every task list refresh
+- `editingTaskId` and `editingStepId` — module-level vars (like `expandedTaskId`) tracking which task/step edit form is open; both reset to `null` inside `toggleTask()` on card collapse
+- `showTaskEditForm(t, detail)` — builds `.task-edit-form` inside the expanded card; Save disabled when title is blank; Escape cancels
+- `hideTaskEditForm(taskId)` — removes the form element and resets `editingTaskId`
+- `saveTaskEdit(taskId, data)` — `PUT /api/tasks/{id}`; on success calls `loadTasks()`; on failure logs to console and leaves form open
+- `showStepEditRow(child, originalRow, parentId, container)` — hides original row, inserts inline edit inputs; Enter saves, Escape cancels; enforces one-at-a-time via `editingStepId`
+- `saveStepEdit(...)` — `PUT /api/tasks/{id}` with title + due_date; on success calls `loadTasks()` only (not a redundant `loadAndRenderSubtasks`)
+- Only one edit form (task or step) may be open at a time; opening a second collapses the first
+- `body { height: 100vh; overflow: hidden; }` in `style.css` is required for the main split-panel layout; `admin.html` overrides this with `<style>body { overflow-y: auto; height: auto; }</style>` in its own `<head>` to allow scrolling
 
 **AI agent:**
 - Tools: `create_task`, `update_task`, `delete_task`, `list_tasks`, `create_subtask`, `add_tag_to_task`, `remove_tag_from_task`
