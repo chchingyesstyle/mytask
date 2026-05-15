@@ -18,6 +18,10 @@ python3 -m pytest tests/test_tasks.py -v
 
 # View logs
 ./docker.sh logs
+
+# Hot-copy static files (no rebuild needed for JS/CSS/HTML changes)
+docker cp static/app.js mytask-mytask-1:/app/static/app.js
+docker cp static/style.css mytask-mytask-1:/app/static/style.css
 ```
 
 ## Architecture
@@ -42,6 +46,8 @@ python3 -m pytest tests/test_tasks.py -v
 - `task_to_dict()` in `routers/tasks.py` must include `tags`, `subtask_count`, `completed_subtasks` — the frontend depends on all three
 - Tag assignment after task creation requires `db.flush()` first (to get the task ID before commit)
 - `PUT /api/tasks/{id}` uses `req.model_fields_set` (not `model_dump(exclude_none=True)`) to iterate update fields — this allows explicitly-sent `null` values (e.g. clearing `due_date` or `notes`) to correctly set the column to NULL
+- `GET /api/info` — unauthenticated; returns `{"model": MODEL}`; used by frontend to label the chat panel
+- `POST /api/tags` — open to all authenticated users (not admin-only); `DELETE /api/tags/{id}` remains admin-only
 
 **Auth:**
 - `get_current_user` dependency in `auth.py` — inject via `Depends(get_current_user)`
@@ -82,4 +88,7 @@ python3 -m pytest tests/test_tasks.py -v
 - Runs on Docker Compose; app on port 8080, Nginx on 443/8080
 - Database persisted at `./data/mytask.db` (bind-mounted volume — survives rebuilds)
 - SSL certs in `./certs/`; Cloudflare Full SSL mode at `uat.lvcopy.com`
-- `.env` holds `SECRET_KEY`, `ADMIN_PASSWORD`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`
+- `.env` holds `JWT_SECRET_KEY`, `ADMIN_PASSWORD`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`
+- App container name: `mytask-mytask-1`; Nginx: `mytask-nginx-1`
+- Python/backend changes require `./docker.sh rebuild`; static file changes can use `docker cp`
+- LiteLLM proxy at `/u01/litellm` (config: `config.yaml`, key: in `.env`); reachable from container at `http://172.20.0.1:4000`
