@@ -44,3 +44,15 @@ def test_regular_user_sees_only_own_projects(client):
     alice_projects = client.get("/api/projects", headers=alice_h).json()
     assert len(alice_projects) == 1
     assert alice_projects[0]["name"] == "Alice Proj"
+
+def test_project_creation_seeds_statuses(admin_headers):
+    client, headers = admin_headers
+    proj_id = client.post("/api/projects", json={"name": "My Project"}, headers=headers).json()["id"]
+    resp = client.get(f"/api/statuses?project_id={proj_id}", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 3
+    assert data[0]["name"] == "Todo"
+    assert data[1]["name"] == "In Progress"
+    assert data[2]["name"] == "Done"
+    assert all(s["project_id"] == proj_id for s in data)

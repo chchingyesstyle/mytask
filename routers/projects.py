@@ -7,6 +7,12 @@ import models
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
+_DEFAULT_STATUSES = [
+    {"name": "Todo",        "color": "#6b7280", "position": 0},
+    {"name": "In Progress", "color": "#4a90d9", "position": 1},
+    {"name": "Done",        "color": "#2ecc71", "position": 2},
+]
+
 class ProjectCreate(BaseModel):
     name: str
 
@@ -21,6 +27,11 @@ def list_projects(db: Session = Depends(get_db), current_user: models.User = Dep
 def create_project(req: ProjectCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     project = models.Project(name=req.name, owner_id=current_user.id)
     db.add(project)
+    db.flush()  # get project.id before commit
+    for s in _DEFAULT_STATUSES:
+        db.add(models.Status(
+            name=s["name"], color=s["color"], position=s["position"], project_id=project.id
+        ))
     db.commit()
     db.refresh(project)
     return {"id": project.id, "name": project.name, "owner_id": project.owner_id}
