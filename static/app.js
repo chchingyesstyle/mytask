@@ -885,26 +885,42 @@ function renderBoard() {
   }
 
   // Primary columns from allStatuses
+  // Build lookup by id AND by lowercase name so project-specific statuses
+  // with the same name merge into the existing column rather than duplicate.
   var knownIds = {};
-  allStatuses.forEach(function(s) { knownIds[s.id] = true; });
+  var knownNames = {};
+  allStatuses.forEach(function(s) {
+    knownIds[s.id] = s;
+    knownNames[s.name.toLowerCase()] = s;
+  });
+
+  // For each primary status, collect tasks matched by id OR by name (for project statuses)
+  var extraTasksByPrimaryId = {};
+  allStatuses.forEach(function(s) { extraTasksByPrimaryId[s.id] = []; });
+
+  var trulyExtra = {};
+  tasks.forEach(function(t) {
+    if (knownIds[t.status_id]) return; // already in a primary column by id
+    var nameMatch = knownNames[t.status_name ? t.status_name.toLowerCase() : ''];
+    if (nameMatch) {
+      extraTasksByPrimaryId[nameMatch.id].push(t); // merge into same-named column
+    } else {
+      if (!trulyExtra[t.status_id]) {
+        trulyExtra[t.status_id] = { id: t.status_id, name: t.status_name, color: t.status_color || '#6b7280', tasks: [] };
+      }
+      trulyExtra[t.status_id].tasks.push(t);
+    }
+  });
 
   allStatuses.forEach(function(status) {
-    var colTasks = tasks.filter(function(t) { return t.status_id === status.id; });
+    var colTasks = tasks.filter(function(t) { return t.status_id === status.id; })
+      .concat(extraTasksByPrimaryId[status.id]);
     container.appendChild(buildBoardColumn(status, colTasks, true));
   });
 
-  // Extra columns for tasks with project-specific statuses not in allStatuses
-  var extraMap = {};
-  tasks.forEach(function(t) {
-    if (t.status_id && !knownIds[t.status_id]) {
-      if (!extraMap[t.status_id]) {
-        extraMap[t.status_id] = { id: t.status_id, name: t.status_name, color: t.status_color || '#6b7280', tasks: [] };
-      }
-      extraMap[t.status_id].tasks.push(t);
-    }
-  });
-  Object.keys(extraMap).forEach(function(sid) {
-    var entry = extraMap[sid];
+  // Columns for statuses with no name match at all
+  Object.keys(trulyExtra).forEach(function(sid) {
+    var entry = trulyExtra[sid];
     container.appendChild(buildBoardColumn(entry, entry.tasks, false));
   });
 
