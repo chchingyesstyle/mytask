@@ -900,90 +900,122 @@ function renderCalendar() {
     'July','August','September','October','November','December'];
   label.textContent = monthNames[m] + ' ' + y;
 
-  // Day headers
+  var today = new Date().toISOString().split('T')[0];
+  var firstDay = new Date(y, m, 1).getDay();
+  var daysInMonth = new Date(y, m + 1, 0).getDate();
+  var numWeeks = Math.ceil((firstDay + daysInMonth) / 7);
+  var monthStr = y + '-' + String(m + 1).padStart(2, '0');
+
+  // Day headers row
+  var headerRow = document.createElement('div');
+  headerRow.className = 'cal-header-row';
   ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function(d) {
     var h = document.createElement('div');
     h.className = 'cal-day-header';
     h.textContent = d;
-    grid.appendChild(h);
+    headerRow.appendChild(h);
   });
+  grid.appendChild(headerRow);
 
-  var firstDay = new Date(y, m, 1).getDay();  // 0=Sun
-  var daysInMonth = new Date(y, m + 1, 0).getDate();
-  var daysInPrev = new Date(y, m, 0).getDate();
-  var today = new Date().toISOString().split('T')[0];
+  function cellDateStr(idx) {
+    var dt = new Date(y, m, 1 - firstDay + idx);
+    return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+  }
 
-  // Build task index spanning start_date through due_date
-  var tasksByDate = {};
+  // Collect task bars
+  var taskBars = [];
   filteredTasks().forEach(function(t) {
     var from = t.start_date || t.due_date;
     var to = t.due_date || t.start_date;
     if (!from) return;
-    var cur = new Date(from + 'T00:00:00');
-    var endDate = new Date(to + 'T00:00:00');
-    var maxIter = 366;
-    while (cur <= endDate && maxIter-- > 0) {
-      var ds = cur.getFullYear() + '-' + String(cur.getMonth() + 1).padStart(2, '0') + '-' + String(cur.getDate()).padStart(2, '0');
-      if (!tasksByDate[ds]) tasksByDate[ds] = [];
-      tasksByDate[ds].push(t);
-      cur.setDate(cur.getDate() + 1);
-    }
+    taskBars.push({ task: t, from: from, to: to });
   });
 
-  // Leading cells from previous month
-  for (var i = firstDay - 1; i >= 0; i--) {
-    var cell = document.createElement('div');
-    cell.className = 'cal-cell other-month';
-    var dateEl = document.createElement('div');
-    dateEl.className = 'cal-date';
-    dateEl.textContent = daysInPrev - i;
-    cell.appendChild(dateEl);
-    grid.appendChild(cell);
-  }
+  for (var week = 0; week < numWeeks; week++) {
+    var weekStartIdx = week * 7;
+    var weekStartDate = cellDateStr(weekStartIdx);
+    var weekEndDate = cellDateStr(weekStartIdx + 6);
+    var hasToday = today >= weekStartDate && today <= weekEndDate;
 
-  // Current month cells
-  for (var d = 1; d <= daysInMonth; d++) {
-    var dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-    var cell = document.createElement('div');
-    cell.className = 'cal-cell' + (dateStr === today ? ' today' : '');
-    var dateEl = document.createElement('div');
-    dateEl.className = 'cal-date';
-    dateEl.textContent = d;
-    cell.appendChild(dateEl);
-    // Task pills
-    (tasksByDate[dateStr] || []).forEach(function(t) {
-      var pill = document.createElement('div');
-      pill.className = 'cal-task-pill priority-' + t.priority;
-      pill.textContent = t.title;
-      pill.title = t.title;
-      pill.addEventListener('click', function(e) {
-        e.stopPropagation();
-        navigateTo('tasks');
-        switchView('list');
-        // Expand the task in list view
-        expandedTaskId = t.id;
-        renderTasks();
-      });
-      cell.appendChild(pill);
+    var weekEl = document.createElement('div');
+    weekEl.className = 'cal-week' + (hasToday ? ' has-today' : '');
+
+    // Cells layer (date numbers + click to add)
+    var cellsLayer = document.createElement('div');
+    cellsLayer.className = 'cal-cells-layer';
+    for (var col = 0; col < 7; col++) {
+      var dateStr = cellDateStr(weekStartIdx + col);
+      var isCurrentMonth = dateStr.slice(0, 7) === monthStr;
+      var cell = document.createElement('div');
+      cell.className = 'cal-cell' +
+        (isCurrentMonth ? '' : ' other-month') +
+        (dateStr === today ? ' today' : '');
+      var dateEl = document.createElement('div');
+      dateEl.className = 'cal-date';
+      dateEl.textContent = parseInt(dateStr.slice(8), 10);
+      cell.appendChild(dateEl);
+      cell.addEventListener('click', function(ds) {
+        return function() { openNewTaskModal(ds, null, null); };
+      }(dateStr));
+      cellsLayer.appendChild(cell);
+    }
+    weekEl.appendChild(cellsLayer);
+
+    // Bars for tasks overlapping this week
+    var weekBars = [];
+    taskBars.forEach(function(tb) {
+      if (tb.from > weekEndDate || tb.to < weekStartDate) return;
+      var clampedFrom = tb.from < weekStartDate ? weekStartDate : tb.from;
+      var clampedTo   = tb.to   > weekEndDate   ? weekEndDate   : tb.to;
+      var colStart = new Date(clampedFrom + 'T00:00:00').getDay() + 1;
+      var colEnd   = new Date(clampedTo   + 'T00:00:00').getDay() + 2;
+      weekBars.push({ tb: tb, colStart: colStart, colEnd: colEnd,
+        isStart: tb.from >= weekStartDate, isEnd: tb.to <= weekEndDate });
     });
-    // Click empty area to open new task modal with pre-filled date
-    cell.addEventListener('click', function(captured_date) {
-      return function() { openNewTaskModal(captured_date, null, null); };
-    }(dateStr));
-    grid.appendChild(cell);
-  }
 
-  // Trailing cells
-  var totalCells = firstDay + daysInMonth;
-  var trailing = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-  for (var t2 = 1; t2 <= trailing; t2++) {
-    var cell = document.createElement('div');
-    cell.className = 'cal-cell other-month';
-    var dateEl = document.createElement('div');
-    dateEl.className = 'cal-date';
-    dateEl.textContent = t2;
-    cell.appendChild(dateEl);
-    grid.appendChild(cell);
+    if (weekBars.length > 0) {
+      weekBars.sort(function(a, b) {
+        if (a.colStart !== b.colStart) return a.colStart - b.colStart;
+        return (b.colEnd - b.colStart) - (a.colEnd - a.colStart);
+      });
+      // Greedy track assignment to avoid overlapping bars
+      var trackEnds = [];
+      weekBars.forEach(function(wb) {
+        var track = -1;
+        for (var ti = 0; ti < trackEnds.length; ti++) {
+          if (trackEnds[ti] <= wb.colStart) { track = ti; trackEnds[ti] = wb.colEnd; break; }
+        }
+        if (track === -1) { track = trackEnds.length; trackEnds.push(wb.colEnd); }
+        wb.track = track;
+      });
+
+      var barsLayer = document.createElement('div');
+      barsLayer.className = 'cal-bars-layer';
+
+      weekBars.forEach(function(wb) {
+        var bar = document.createElement('div');
+        bar.className = 'cal-bar priority-' + (wb.tb.task.priority || 'medium') +
+          (wb.isStart ? ' cal-bar-start' : '') +
+          (wb.isEnd   ? ' cal-bar-end'   : '');
+        bar.title = wb.tb.task.title;
+        if (wb.isStart) bar.textContent = wb.tb.task.title;
+        bar.style.gridColumn = wb.colStart + ' / ' + wb.colEnd;
+        bar.style.gridRow = (wb.track + 1) + '';
+        bar.addEventListener('click', function(task) {
+          return function(e) {
+            e.stopPropagation();
+            navigateTo('tasks');
+            switchView('list');
+            expandedTaskId = task.id;
+            renderTasks();
+          };
+        }(wb.tb.task));
+        barsLayer.appendChild(bar);
+      });
+      weekEl.appendChild(barsLayer);
+    }
+
+    grid.appendChild(weekEl);
   }
 }
 
