@@ -151,7 +151,7 @@ docker cp static/index.html mytask-mytask-1:/app/static/index.html
 - Runs on Docker Compose; app on port 8080, Nginx on 443/8080
 - Database persisted at `./data/mytask.db` (bind-mounted volume — survives rebuilds)
 - KB uploads persisted at `./data/uploads/` — same `./data:/app/data` bind mount; survives rebuilds
-- SSL certs in `./certs/`; Cloudflare Full SSL mode at `uat.lvcopy.com`
+- SSL certs in `./certs/`; Cloudflare Full SSL mode at `cchk.uk`
 - `.env` holds `JWT_SECRET_KEY`, `ADMIN_PASSWORD`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`
 - App container name: `mytask-mytask-1`; Nginx: `mytask-nginx-1`
 - Python/backend changes require `./docker.sh rebuild`; static file changes can use `docker cp`
