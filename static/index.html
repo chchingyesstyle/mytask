@@ -30,7 +30,7 @@
         <button class="sidebar-item active" data-page="tasks">
           <span class="sidebar-icon">✓</span>
           <span class="sidebar-label">Tasks</span>
-          <span id="overdue-badge" class="overdue-badge" style="display:none"></span>
+          <span id="overdue-badge" class="overdue-badge" style="display:none" role="status" aria-live="polite" aria-label="Overdue tasks"></span>
         </button>
         <button class="sidebar-item" data-page="dashboard">
           <span class="sidebar-icon">📊</span>
@@ -255,7 +255,7 @@
   <!-- Chat widget -->
   <div id="chat-widget" class="chat-widget" style="display:none">
     <div class="chat-header">
-      <div class="ai-dot" id="ai-dot"></div>
+      <div class="ai-dot" id="ai-dot" role="status" aria-label="AI ready"></div>
       <span class="chat-title">AI Assistant</span>
       <span class="chat-model" id="chat-model-label"></span>
       <button id="chat-close-btn" class="chat-close-btn" aria-label="Close chat">✕</button>

@@ -84,15 +84,33 @@ function logout() {
   location.reload();
 }
 
-function showToast(msg) {
+function showToast(msg, actionLabel, actionFn) {
   var t = document.createElement('div');
-  t.textContent = msg;
+  t.setAttribute('role', 'status');
+  t.setAttribute('aria-live', 'polite');
   t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);' +
     'background:var(--bg-card);border:1px solid var(--border);color:var(--text);' +
     'padding:8px 18px;border-radius:var(--r);font-size:12px;z-index:500;' +
-    'box-shadow:0 4px 12px rgba(0,0,0,.3);pointer-events:none;';
+    'box-shadow:0 4px 12px rgba(0,0,0,.3);display:flex;align-items:center;gap:12px;white-space:nowrap;';
+  var msgSpan = document.createElement('span');
+  msgSpan.textContent = msg;
+  t.appendChild(msgSpan);
+  var duration = 2500;
+  if (actionLabel && actionFn) {
+    duration = 5000;
+    var btn = document.createElement('button');
+    btn.textContent = actionLabel;
+    btn.style.cssText = 'background:none;border:none;color:var(--accent);font-size:12px;' +
+      'font-weight:600;cursor:pointer;padding:0;text-decoration:underline;';
+    btn.addEventListener('click', function() {
+      clearTimeout(timer);
+      t.remove();
+      actionFn();
+    });
+    t.appendChild(btn);
+  }
   document.body.appendChild(t);
-  setTimeout(function() { t.remove(); }, 2500);
+  var timer = setTimeout(function() { if (document.body.contains(t)) t.remove(); }, duration);
 }
 
 async function initApp() {
@@ -336,14 +354,31 @@ function renderTagFilters() {
 
 // Tasks
 async function loadTasks() {
-  var resp = await fetch('/api/tasks', { headers: authHeaders() });
-  if (!resp.ok) { if (resp.status === 401) showLogin(); return; }
-  allTasks = await resp.json();
-  var _pid = activeFilter.indexOf('project:') === 0 ? parseInt(activeFilter.split(':')[1]) : undefined;
-  await loadStatuses(_pid);
-  renderCurrentView();
-  updateOverdueBadge();
-  loadDashboard();
+  try {
+    var resp = await fetch('/api/tasks', { headers: authHeaders() });
+    if (!resp.ok) { if (resp.status === 401) showLogin(); return; }
+    allTasks = await resp.json();
+    var _pid = activeFilter.indexOf('project:') === 0 ? parseInt(activeFilter.split(':')[1]) : undefined;
+    await loadStatuses(_pid);
+    renderCurrentView();
+    updateOverdueBadge();
+    loadDashboard();
+  } catch (e) {
+    var listEl = document.getElementById('task-list');
+    if (listEl) {
+      _clearEl(listEl);
+      var errDiv = document.createElement('div');
+      errDiv.className = 'load-error';
+      var errMsg = document.createElement('span');
+      errMsg.textContent = 'Could not load tasks. Check your connection. ';
+      var retryBtn = document.createElement('button');
+      retryBtn.textContent = 'Try again';
+      retryBtn.addEventListener('click', loadTasks);
+      errDiv.appendChild(errMsg);
+      errDiv.appendChild(retryBtn);
+      listEl.appendChild(errDiv);
+    }
+  }
 }
 
 // Dashboard
@@ -1320,9 +1355,9 @@ function buildTableCell(t, colKey) {
     if (t.priority) {
       var dot = document.createElement('span');
       dot.style.cssText = 'display:inline-flex;align-items:center;gap:4px';
-      var colors = { high: '#ef4444', medium: '#f59e0b', low: '#6b7280' };
+      var colors = { high: 'var(--danger)', medium: 'var(--warning)', low: 'var(--text-dim)' };
       var dotCircle = document.createElement('span');
-      dotCircle.style.cssText = 'width:7px;height:7px;border-radius:50%;background:' + (colors[t.priority] || '#6b7280');
+      dotCircle.style.cssText = 'width:7px;height:7px;border-radius:50%;background:' + (colors[t.priority] || 'var(--text-dim)');
       dot.appendChild(dotCircle);
       dot.appendChild(document.createTextNode(t.priority));
       td.appendChild(dot);
@@ -1337,7 +1372,7 @@ function buildTableCell(t, colKey) {
     if (!val) { td.textContent = '—'; return td; }
     var isOverdue = colKey === 'due_date' && val < new Date().toISOString().slice(0,10) && t.status_name !== 'Done';
     td.textContent = (isOverdue ? '⚠ ' : '') + val;
-    if (isOverdue) td.style.color = '#ef4444';
+    if (isOverdue) td.style.color = 'var(--danger)';
     return td;
   }
 
@@ -1800,10 +1835,20 @@ async function updateTaskStatus(id, statusId) {
   await loadTasks();
 }
 
-async function deleteTask(id) {
-  if (!confirm('Delete this task?')) return;
-  await fetch('/api/tasks/' + id, { method: 'DELETE', headers: authHeaders() });
-  await loadTasks();
+function deleteTask(id) {
+  // Optimistic removal — schedule actual delete after 5s to allow undo
+  allTasks = allTasks.filter(function(t) { return t.id !== id; });
+  renderCurrentView();
+  updateOverdueBadge();
+  var undone = false;
+  var timer = setTimeout(function() {
+    if (!undone) fetch('/api/tasks/' + id, { method: 'DELETE', headers: authHeaders() });
+  }, 5000);
+  showToast('Task deleted', 'Undo', function() {
+    undone = true;
+    clearTimeout(timer);
+    loadTasks();
+  });
 }
 
 function showTaskEditForm(t, detail) {
@@ -1944,6 +1989,7 @@ function updateOverdueBadge() {
   var badge = document.getElementById('overdue-badge');
   if (count > 0) {
     badge.textContent = count + ' overdue';
+    badge.setAttribute('aria-label', count + ' overdue tasks');
     badge.style.display = 'inline';
   } else {
     badge.style.display = 'none';
@@ -3098,7 +3144,7 @@ function renderTaskAIActions(task, detailEl) {
         replyBtn.disabled = false;
         replyBtn.textContent = '↩ Reply';
         if (data.error || !data.result) {
-          replyInput.style.borderColor = '#ef4444';
+          replyInput.style.borderColor = 'var(--danger)';
           replyInput.placeholder = 'AI unavailable, please try again.';
           return;
         }
@@ -3106,7 +3152,7 @@ function renderTaskAIActions(task, detailEl) {
       }).catch(function() {
         replyBtn.disabled = false;
         replyBtn.textContent = '↩ Reply';
-        replyInput.style.borderColor = '#ef4444';
+        replyInput.style.borderColor = 'var(--danger)';
       });
     }
 
@@ -3139,7 +3185,7 @@ function renderTaskAIActions(task, detailEl) {
       if (data.error || !data.result) {
         outputDiv.textContent = '';
         var errMsg = document.createElement('p');
-        errMsg.style.cssText = 'font-size:11px;color:#ef4444;padding:6px 0';
+        errMsg.style.cssText = 'font-size:11px;color:var(--danger);padding:6px 0';
         errMsg.textContent = 'AI unavailable, please try again.';
         outputDiv.appendChild(errMsg);
         return;
@@ -3149,7 +3195,7 @@ function renderTaskAIActions(task, detailEl) {
       btn.disabled = false;
       btn.textContent = actionLabel;
       var errMsg = document.createElement('p');
-      errMsg.style.cssText = 'font-size:11px;color:#ef4444;padding:6px 0';
+      errMsg.style.cssText = 'font-size:11px;color:var(--danger);padding:6px 0';
       errMsg.textContent = 'AI unavailable, please try again.';
       outputDiv.appendChild(errMsg);
     });
@@ -3179,7 +3225,7 @@ function renderTaskAIActions(task, detailEl) {
       if (data.error || !data.result) {
         outputDiv.textContent = '';
         var errMsg = document.createElement('p');
-        errMsg.style.cssText = 'font-size:11px;color:#ef4444;padding:6px 0';
+        errMsg.style.cssText = 'font-size:11px;color:var(--danger);padding:6px 0';
         errMsg.textContent = 'AI unavailable, please try again.';
         outputDiv.appendChild(errMsg);
         return;
@@ -3189,7 +3235,7 @@ function renderTaskAIActions(task, detailEl) {
       askBtn.disabled = false;
       askBtn.textContent = '💬 Ask';
       var errMsg = document.createElement('p');
-      errMsg.style.cssText = 'font-size:11px;color:#ef4444;padding:6px 0';
+      errMsg.style.cssText = 'font-size:11px;color:var(--danger);padding:6px 0';
       errMsg.textContent = 'AI unavailable, please try again.';
       outputDiv.appendChild(errMsg);
     });
