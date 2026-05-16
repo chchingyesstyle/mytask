@@ -61,6 +61,58 @@ function renderNotesDisplay(notesText, container) {
   container.appendChild(body);
 }
 
+function buildNotesToggle(initialValue) {
+  var wrapper = document.createElement('div');
+
+  var tabs = document.createElement('div');
+  tabs.className = 'notes-tabs';
+
+  var editTab = document.createElement('button');
+  editTab.className = 'notes-tab active';
+  editTab.textContent = 'Edit';
+  editTab.type = 'button';
+
+  var previewTab = document.createElement('button');
+  previewTab.className = 'notes-tab';
+  previewTab.textContent = 'Preview';
+  previewTab.type = 'button';
+
+  tabs.appendChild(editTab);
+  tabs.appendChild(previewTab);
+
+  var textarea = document.createElement('textarea');
+  textarea.className = 'notes-editor';
+  textarea.value = initialValue || '';
+  textarea.placeholder = 'Notes — markdown supported';
+
+  var preview = document.createElement('div');
+  preview.className = 'notes-preview';
+  preview.style.display = 'none';
+
+  editTab.addEventListener('click', function(e) {
+    e.stopPropagation();
+    editTab.classList.add('active');
+    previewTab.classList.remove('active');
+    textarea.style.display = '';
+    preview.style.display = 'none';
+  });
+
+  previewTab.addEventListener('click', function(e) {
+    e.stopPropagation();
+    previewTab.classList.add('active');
+    editTab.classList.remove('active');
+    textarea.style.display = 'none';
+    preview.style.display = '';
+    setMarkdownContent(preview, textarea.value);
+  });
+
+  wrapper.appendChild(tabs);
+  wrapper.appendChild(textarea);
+  wrapper.appendChild(preview);
+
+  return { el: wrapper, getValue: function() { return textarea.value; } };
+}
+
 // Auth
 function getToken() { return localStorage.getItem('mytask_token'); }
 function authHeaders() {
