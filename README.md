@@ -1,4 +1,4 @@
-# MyTask — Personal AI Task Manager `v2.0`
+# MyTask — Personal AI Task Manager `v2.1`
 
 A personal task manager with an integrated AI assistant, built on FastAPI, SQLite, and vanilla JavaScript.
 
@@ -7,6 +7,7 @@ A personal task manager with an integrated AI assistant, built on FastAPI, SQLit
 ### Task Management
 - **Multiple views** — List, Board (Kanban), Calendar, Timeline (Gantt), Table (spreadsheet)
 - **Task management** — Create, update, and delete tasks with priorities, start/due dates, projects, tags, and notes
+- **Markdown notes** — Full GitHub Flavored Markdown in task notes: always rendered in the task card; Edit / Preview toggle in the edit form. Supports headings, bold, italic, lists, blockquotes, code blocks, tables, strikethrough, and links
 - **Sub-tasks** — Nested checklist steps under any task; toggle done/todo inline; inline editing
 - **Inline editing** — Edit any field directly in the task card or in the table view cells
 - **Board view** — Kanban with project-specific status columns

@@ -104,6 +104,15 @@ docker cp static/index.html mytask-mytask-1:/app/static/index.html
 - When collapsed, the expanded task card shows 5 zones (status, edit, tags, subtasks, AI toggle); full AI interface only visible when expanded
 - Error messages use `var(--danger)` (not hardcoded `#ef4444`)
 
+**Notes / Markdown:**
+- Notes are stored as plain markdown TEXT in the DB (`Task.notes`) — no HTML stored, ever
+- `setMarkdownContent(el, mdText)` — safe markdown-to-DOM: `marked.parse()` → `DOMPurify.sanitize()` → `DOMParser` + `importNode`; no `innerHTML`
+- `renderNotesDisplay(notesText, container)` — renders notes with label into a container div; no-ops on empty/null
+- `buildNotesToggle(initialValue)` — returns `{ el, getValue() }`: Edit/Preview tabs + `.notes-editor` textarea + `.notes-preview` div
+- `showTaskEditForm()` uses `buildNotesToggle(t.notes)` — read value via `notesToggle.getValue()`
+- New Task modal keeps plain `<textarea id="mt-notes">` — no toggle (fast capture)
+- marked.js + DOMPurify loaded from CDN in `index.html` before `app.js`
+
 **Color system:**
 - CSS custom properties use OKLCH throughout; no hardcoded hex colors in `style.css` (except `rgba(0,0,0,...)` for shadows/overlays)
 - Dark mode vars defined on `:root`; light mode overrides on `body.light`
