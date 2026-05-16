@@ -265,9 +265,10 @@ body.light .task-card:hover { background: oklch(67% 0.16 228 / 0.05); }
 /* ── Edit / Preview toggle ── */
 .notes-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 0; }
 .notes-tab { background: none; border: 1px solid var(--border); border-bottom: none; border-radius: var(--r-sm) var(--r-sm) 0 0; color: var(--text-dim); font-size: 11px; padding: 3px 12px; cursor: pointer; margin-right: 2px; }
+.notes-tab:hover { color: var(--text); }
 .notes-tab.active { background: var(--bg-input); color: var(--accent); }
-.notes-editor { display: block; width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border); border-top: none; border-radius: 0 0 var(--r-sm) var(--r-sm); color: var(--text); font-family: monospace; font-size: 11px; padding: 8px; min-height: 120px; resize: vertical; }
-.notes-preview { background: var(--bg-input); border: 1px solid var(--border); border-top: none; border-radius: 0 0 var(--r-sm) var(--r-sm); padding: 10px 12px; min-height: 120px; }
+.notes-editor { display: block; width: 100%; box-sizing: border-box; background: var(--bg-input); border: 1px solid var(--border); border-top: none; border-radius: 0 0 var(--r-sm) var(--r-sm); color: var(--text); font-family: monospace; font-size: 11px; padding: 8px 10px; min-height: 120px; resize: vertical; }
+.notes-preview { background: var(--bg-input); border: 1px solid var(--border); border-top: none; border-radius: 0 0 var(--r-sm) var(--r-sm); padding: 8px 10px; min-height: 120px; }
 .btn-danger { background: var(--danger); }
 
 /* ── Chat FAB ── */
