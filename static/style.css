@@ -237,7 +237,7 @@ body.light .task-card:hover { background: oklch(67% 0.16 228 / 0.05); }
 .task-detail.open { display: block; }
 .task-detail-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .task-detail-actions button, .task-detail-actions select { font-size: 11px; padding: 4px 10px; }
-.task-notes-container { margin-top: 8px; }
+.task-notes-container:not(:empty) { margin-top: 8px; }
 
 /* ── Rendered markdown output ── */
 .notes-rendered { font-size: 12px; line-height: 1.7; color: var(--text); }
