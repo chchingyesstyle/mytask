@@ -1,7 +1,6 @@
 (function() {
-  if (localStorage.getItem('theme') === 'light') {
-    document.body.classList.add('light');
-  }
+  var t = localStorage.getItem('theme');
+  if (t && t !== 'dark') document.body.classList.add(t);
 })();
 
 // State
@@ -119,15 +118,18 @@ function authHeaders() {
   return { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' };
 }
 
+var THEMES = ['dark', 'light', 'forest', 'amber', 'midnight'];
+var THEME_LABELS = { dark: 'Dark', light: 'Light', forest: 'Forest', amber: 'Amber', midnight: 'Midnight' };
+
 function applyTheme(theme) {
-  document.body.classList.toggle('light', theme === 'light');
+  ['light', 'forest', 'amber', 'midnight'].forEach(function(c) { document.body.classList.remove(c); });
+  if (theme !== 'dark') document.body.classList.add(theme);
   localStorage.setItem('theme', theme);
-  var isDark = theme !== 'light';
-  var label = isDark ? '☀️ Light' : '🌙 Dark';
+  var label = THEME_LABELS[theme] || 'Dark';
   var t1 = document.getElementById('theme-toggle');
   var t2 = document.getElementById('theme-toggle-drawer');
-  if (t1) t1.textContent = label;
-  if (t2) t2.textContent = label;
+  if (t1) { t1.textContent = label; t1.setAttribute('data-theme', theme); }
+  if (t2) { t2.textContent = label; t2.setAttribute('data-theme', theme); }
 }
 
 async function login() {
@@ -4082,7 +4084,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function onThemeToggle() {
     var current = localStorage.getItem('theme') || 'dark';
-    applyTheme(current === 'light' ? 'dark' : 'light');
+    var idx = THEMES.indexOf(current);
+    applyTheme(THEMES[(idx + 1) % THEMES.length]);
   }
   var tt = document.getElementById('theme-toggle');
   var ttd = document.getElementById('theme-toggle-drawer');
