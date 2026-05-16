@@ -62,6 +62,7 @@ def task_to_dict(task: models.Task) -> dict:
             1 for c in task.children
             if c.status_rel and c.status_rel.name.lower() == "done"
         ),
+        "children": [task_to_dict(c) for c in task.children] if task.parent_id is None else [],
     }
 
 @router.get("")

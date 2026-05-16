@@ -26,16 +26,17 @@ let projectStatusMap = {};
 var tableSort = { col: null, dir: 'asc' };
 var tableExpanded = {};
 var tableHiddenCols = JSON.parse(localStorage.getItem('tableHiddenCols') || '[]');
+var tableColFilters = JSON.parse(localStorage.getItem('tableColFilters') || '{}');
 
 var TABLE_COLS = [
-  { key: 'title',      label: 'Title',      sortable: true,  always: true  },
-  { key: 'status',     label: 'Status',     sortable: true,  always: false },
-  { key: 'priority',   label: 'Priority',   sortable: true,  always: false },
-  { key: 'start_date', label: 'Start Date', sortable: true,  always: false },
-  { key: 'due_date',   label: 'Due Date',   sortable: true,  always: false },
-  { key: 'project',    label: 'Project',    sortable: true,  always: false },
-  { key: 'tags',       label: 'Tags',       sortable: false, always: false },
-  { key: 'notes',      label: 'Notes',      sortable: false, always: false }
+  { key: 'title',      label: 'Title',      sortable: true,  always: true,  filterable: false },
+  { key: 'status',     label: 'Status',     sortable: true,  always: false, filterable: true  },
+  { key: 'priority',   label: 'Priority',   sortable: true,  always: false, filterable: true  },
+  { key: 'start_date', label: 'Start Date', sortable: true,  always: false, filterable: false },
+  { key: 'due_date',   label: 'Due Date',   sortable: true,  always: false, filterable: false },
+  { key: 'project',    label: 'Project',    sortable: true,  always: false, filterable: true  },
+  { key: 'tags',       label: 'Tags',       sortable: false, always: false, filterable: false },
+  { key: 'notes',      label: 'Notes',      sortable: false, always: false, filterable: false }
 ];
 
 // Auth
@@ -1311,14 +1312,117 @@ function buildTableToolbar(toolbar) {
     });
     toolbar.appendChild(sortIndicator);
   }
+
+  Object.keys(tableColFilters).forEach(function(colKey) {
+    var vals = tableColFilters[colKey];
+    if (!vals || !vals.length) return;
+    var colDef = TABLE_COLS.find(function(c) { return c.key === colKey; });
+    var pill = document.createElement('span');
+    pill.className = 'table-filter-pill';
+    pill.appendChild(document.createTextNode((colDef ? colDef.label : colKey) + ': ' + vals.join(', ')));
+    var x = document.createElement('button');
+    x.className = 'table-filter-pill-clear';
+    x.textContent = '\xd7';
+    x.addEventListener('click', function() {
+      delete tableColFilters[colKey];
+      localStorage.setItem('tableColFilters', JSON.stringify(tableColFilters));
+      renderTable();
+    });
+    pill.appendChild(x);
+    toolbar.appendChild(pill);
+  });
 }
 
 function getVisibleCols() {
   return TABLE_COLS.filter(function(c) { return c.always || !tableHiddenCols.includes(c.key); });
 }
 
+function openTableColFilter(colKey, colLabel, rect) {
+  var existing = document.querySelector('.table-col-filter-picker');
+  if (existing) { existing.remove(); return; }
+
+  var values = [];
+  allTasks.filter(function(t) { return !t.parent_id; }).forEach(function(t) {
+    var v = getTableColValue(t, colKey);
+    if (v && values.indexOf(v) === -1) values.push(v);
+  });
+  values.sort();
+
+  var current = tableColFilters[colKey] || [];
+  var picker = document.createElement('div');
+  picker.className = 'table-col-filter-picker';
+
+  var hdr = document.createElement('div');
+  hdr.className = 'table-col-filter-picker-hdr';
+  hdr.textContent = colLabel;
+  picker.appendChild(hdr);
+
+  var allLbl = document.createElement('label');
+  var allChk = document.createElement('input');
+  allChk.type = 'checkbox';
+  allChk.checked = current.length === 0;
+  allLbl.className = 'table-col-filter-all';
+  allLbl.appendChild(allChk);
+  allLbl.appendChild(document.createTextNode(' (All)'));
+  picker.appendChild(allLbl);
+
+  var checkboxes = {};
+  values.forEach(function(v) {
+    var lbl = document.createElement('label');
+    var chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.checked = current.length === 0 || current.indexOf(v) !== -1;
+    checkboxes[v] = chk;
+    allChk.addEventListener('change', function() { chk.checked = allChk.checked; });
+    chk.addEventListener('change', function() {
+      var allChecked = values.every(function(val) { return checkboxes[val].checked; });
+      allChk.checked = allChecked;
+    });
+    lbl.appendChild(chk);
+    lbl.appendChild(document.createTextNode(' ' + v));
+    picker.appendChild(lbl);
+  });
+
+  var applyBtn = document.createElement('button');
+  applyBtn.className = 'table-col-filter-apply';
+  applyBtn.textContent = 'Apply';
+  applyBtn.addEventListener('click', function() {
+    var selected = values.filter(function(v) { return checkboxes[v].checked; });
+    if (selected.length === values.length) {
+      delete tableColFilters[colKey];
+    } else {
+      tableColFilters[colKey] = selected;
+    }
+    localStorage.setItem('tableColFilters', JSON.stringify(tableColFilters));
+    picker.remove();
+    renderTable();
+  });
+  picker.appendChild(applyBtn);
+
+  picker.style.top = (rect.bottom + 4) + 'px';
+  picker.style.left = rect.left + 'px';
+  document.body.appendChild(picker);
+  setTimeout(function() {
+    document.addEventListener('click', function removePicker(e) {
+      if (!picker.contains(e.target)) { picker.remove(); document.removeEventListener('click', removePicker); }
+    });
+  }, 0);
+}
+
+function getTableColValue(t, colKey) {
+  if (colKey === 'priority') return t.priority || 'none';
+  if (colKey === 'status') return t.status_name || 'Todo';
+  if (colKey === 'project') return t.project_name || '(No Project)';
+  return null;
+}
+
 function sortedFilteredTasks() {
   var tasks = filteredTasks().filter(function(t) { return !t.parent_id; });
+  Object.keys(tableColFilters).forEach(function(colKey) {
+    var allowed = tableColFilters[colKey];
+    if (!allowed || !allowed.length) return;
+    tasks = tasks.filter(function(t) { return allowed.indexOf(getTableColValue(t, colKey)) !== -1; });
+  });
   if (!tableSort.col) return tasks;
   var col = tableSort.col;
   var dir = tableSort.dir === 'asc' ? 1 : -1;
@@ -1692,11 +1796,12 @@ function renderTable() {
   visibleCols.forEach(function(col) {
     var th = document.createElement('th');
     th.dataset.col = col.key;
-    th.textContent = col.label;
+    var labelNode = document.createTextNode(col.label);
+    th.appendChild(labelNode);
     if (col.sortable) {
       th.className = 'sortable';
       if (tableSort.col === col.key) {
-        th.textContent += ' ' + (tableSort.dir === 'asc' ? '↑' : '↓');
+        th.appendChild(document.createTextNode(' ' + (tableSort.dir === 'asc' ? '↑' : '↓')));
       }
       th.addEventListener('click', function() {
         if (tableSort.col === col.key) {
@@ -1710,6 +1815,20 @@ function renderTable() {
         }
         renderTable();
       });
+    }
+    if (col.filterable) {
+      var isActive = tableColFilters[col.key] && tableColFilters[col.key].length;
+      var filterBtn = document.createElement('button');
+      filterBtn.className = 'table-col-filter-btn' + (isActive ? ' active' : '');
+      filterBtn.textContent = '▽';
+      filterBtn.title = 'Filter by ' + col.label;
+      (function(colKey, colLabel) {
+        filterBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openTableColFilter(colKey, colLabel, filterBtn.getBoundingClientRect());
+        });
+      }(col.key, col.label));
+      th.appendChild(filterBtn);
     }
     headerRow.appendChild(th);
   });
