@@ -39,6 +39,28 @@ var TABLE_COLS = [
   { key: 'notes',      label: 'Notes',      sortable: false, always: false, filterable: false }
 ];
 
+function setMarkdownContent(el, mdText) {
+  var html = DOMPurify.sanitize(marked.parse(mdText || ''));
+  var doc = new DOMParser().parseFromString(html, 'text/html');
+  el.textContent = '';
+  Array.from(doc.body.childNodes).forEach(function(node) {
+    el.appendChild(document.importNode(node, true));
+  });
+}
+
+function renderNotesDisplay(notesText, container) {
+  container.textContent = '';
+  if (!notesText || !notesText.trim()) return;
+  var label = document.createElement('div');
+  label.className = 'notes-display-label';
+  label.textContent = 'Notes';
+  var body = document.createElement('div');
+  body.className = 'notes-rendered';
+  setMarkdownContent(body, notesText);
+  container.appendChild(label);
+  container.appendChild(body);
+}
+
 // Auth
 function getToken() { return localStorage.getItem('mytask_token'); }
 function authHeaders() {
