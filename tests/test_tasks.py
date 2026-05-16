@@ -194,3 +194,19 @@ def test_change_password(admin_headers):
     # Can log in with new password
     r2 = client.post("/api/auth/login", json={"username": "admin", "password": "newpass123"})
     assert r2.status_code == 200
+
+def test_completed_at_set_when_status_done(admin_headers):
+    client, headers = admin_headers
+    r = client.post("/api/tasks", json={"title": "Finish me"}, headers=headers)
+    task_id = r.json()["id"]
+    r2 = client.put(f"/api/tasks/{task_id}", json={"status_id": 3}, headers=headers)
+    assert r2.status_code == 200
+    assert r2.json()["completed_at"] is not None
+
+def test_completed_at_cleared_when_status_not_done(admin_headers):
+    client, headers = admin_headers
+    r = client.post("/api/tasks", json={"title": "Undo me"}, headers=headers)
+    task_id = r.json()["id"]
+    client.put(f"/api/tasks/{task_id}", json={"status_id": 3}, headers=headers)
+    r2 = client.put(f"/api/tasks/{task_id}", json={"status_id": 1}, headers=headers)
+    assert r2.json()["completed_at"] is None

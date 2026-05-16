@@ -68,6 +68,9 @@ def _migrate():
                 "WHERE status_id IS NULL"
             ))
             conn.commit()
+        if "completed_at" not in task_cols:
+            conn.execute(text("ALTER TABLE tasks ADD COLUMN completed_at DATETIME"))
+            conn.commit()
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS kb_documents (
                 id INTEGER PRIMARY KEY,

@@ -61,6 +61,7 @@ class Task(Base):
     status_id = Column(Integer, ForeignKey("statuses.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
     owner = relationship("User", back_populates="tasks")
     project = relationship("Project", back_populates="tasks")
     children = relationship(

@@ -55,6 +55,7 @@ def task_to_dict(task: models.Task) -> dict:
         "parent_id": task.parent_id,
         "created_at": task.created_at.isoformat(),
         "updated_at": task.updated_at.isoformat() if task.updated_at else None,
+        "completed_at": task.completed_at.isoformat() if task.completed_at else None,
         "tags": [{"id": t.id, "name": t.name, "color": t.color} for t in task.tags],
         "subtask_count": len(task.children),
         "completed_subtasks": sum(
@@ -170,6 +171,18 @@ def update_task(
         setattr(task, field, update_data[field])
     if req.tag_ids is not None:
         task.tags = db.query(models.Tag).filter(models.Tag.id.in_(req.tag_ids)).all()
+    if "status_id" in req.model_fields_set:
+        is_done = False
+        if req.status_id:
+            done_s = db.query(models.Status).filter(
+                models.Status.id == req.status_id,
+                models.Status.name.ilike("done")
+            ).first()
+            is_done = done_s is not None
+        if is_done and not task.completed_at:
+            task.completed_at = datetime.utcnow()
+        elif not is_done:
+            task.completed_at = None
     task.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(task)
