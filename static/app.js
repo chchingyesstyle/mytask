@@ -27,7 +27,6 @@ var tableSort = { col: null, dir: 'asc' };
 var tableExpanded = {};
 var tableHiddenCols = JSON.parse(localStorage.getItem('tableHiddenCols') || '[]');
 var tableColFilters = JSON.parse(localStorage.getItem('tableColFilters') || '{}');
-var tableHideDone = localStorage.getItem('tableHideDone') === 'true';
 
 var TABLE_COLS = [
   { key: 'title',      label: 'Title',      sortable: true,  always: true,  filterable: false },
@@ -1302,16 +1301,6 @@ function buildTableToolbar(toolbar) {
   });
   toolbar.appendChild(colBtn);
 
-  var hideDoneBtn = document.createElement('button');
-  hideDoneBtn.className = 'btn-secondary table-hide-done-btn' + (tableHideDone ? ' active' : '');
-  hideDoneBtn.textContent = tableHideDone ? 'Show Done' : 'Hide Done';
-  hideDoneBtn.addEventListener('click', function() {
-    tableHideDone = !tableHideDone;
-    localStorage.setItem('tableHideDone', tableHideDone);
-    renderTable();
-  });
-  toolbar.appendChild(hideDoneBtn);
-
   if (tableSort.col) {
     var sortIndicator = document.createElement('span');
     sortIndicator.style.cssText = 'font-size:11px;color:var(--text-dim);cursor:pointer';
@@ -1429,9 +1418,6 @@ function getTableColValue(t, colKey) {
 
 function sortedFilteredTasks() {
   var tasks = filteredTasks().filter(function(t) { return !t.parent_id; });
-  if (tableHideDone) {
-    tasks = tasks.filter(function(t) { return (t.status_name || '').toLowerCase() !== 'done'; });
-  }
   Object.keys(tableColFilters).forEach(function(colKey) {
     var allowed = tableColFilters[colKey];
     if (!allowed || !allowed.length) return;
