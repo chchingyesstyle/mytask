@@ -417,7 +417,10 @@ function renderDashTaskLists(data) {
         due.textContent = dueLabelFn(t.due_date);
         row.appendChild(due);
       }
-      row.addEventListener('click', function() { navigateTo('tasks'); });
+      row.addEventListener('click', function() {
+        expandedTaskId = t.id;
+        navigateTo('tasks');
+      });
       wrap.appendChild(row);
     });
     container.appendChild(wrap);
@@ -425,7 +428,7 @@ function renderDashTaskLists(data) {
 
   function overdueLabel(d) {
     var days = Math.round((new Date() - new Date(d + 'T00:00:00')) / 86400000);
-    return days === 1 ? '1 day overdue' : days + ' days overdue';
+    return days <= 0 ? 'today' : days === 1 ? '1 day overdue' : days + ' days overdue';
   }
 
   makeList(data.overdue_tasks, 'Overdue', overdueLabel);
