@@ -870,6 +870,71 @@ function buildTaskCard(t) {
   return card;
 }
 
+function buildInlineAddRow(statusId, projectId) {
+  var row = document.createElement('div');
+  row.className = 'inline-add-row';
+
+  var trigger = document.createElement('button');
+  trigger.className = 'inline-add-trigger';
+  var plus = document.createElement('span');
+  plus.textContent = '+';
+  var lbl = document.createElement('span');
+  lbl.textContent = 'Add a task…';
+  trigger.appendChild(plus);
+  trigger.appendChild(lbl);
+  row.appendChild(trigger);
+
+  trigger.addEventListener('click', function() {
+    trigger.style.display = 'none';
+    var form = document.createElement('div');
+    form.className = 'inline-add-form';
+    var inp = document.createElement('input');
+    inp.type = 'text';
+    inp.placeholder = 'Task title…';
+    form.appendChild(inp);
+    var btns = document.createElement('div');
+    btns.style.cssText = 'display:flex;gap:4px;flex-shrink:0';
+    var saveBtn = document.createElement('button');
+    saveBtn.className = 'inline-add-save';
+    saveBtn.textContent = 'Add';
+    btns.appendChild(saveBtn);
+    var cancelBtn = document.createElement('button');
+    cancelBtn.className = 'inline-add-cancel';
+    cancelBtn.textContent = '✕';
+    btns.appendChild(cancelBtn);
+    form.appendChild(btns);
+    row.appendChild(form);
+    inp.focus();
+
+    function cancel() { form.remove(); trigger.style.display = ''; }
+    async function submit() {
+      var title = inp.value.trim();
+      if (!title) { inp.focus(); return; }
+      saveBtn.disabled = true;
+      var body = { title: title };
+      if (statusId) body.status_id = statusId;
+      if (projectId) body.project_id = projectId;
+      var resp = await fetch('/api/tasks', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+      if (resp.ok) {
+        localStorage.setItem('mytask-tip-seen', '1');
+        await loadTasks();
+      } else {
+        saveBtn.disabled = false;
+        inp.focus();
+      }
+    }
+
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      if (e.key === 'Escape') { cancel(); }
+    });
+    saveBtn.addEventListener('click', submit);
+    cancelBtn.addEventListener('click', cancel);
+  });
+
+  return row;
+}
+
 function renderTasks() {
   var tasks = filteredTasks();
   var today = new Date().toISOString().split('T')[0];
@@ -912,6 +977,9 @@ function renderTasks() {
     ? allStatuses.map(function(s) { return s.name; })
     : ['Todo', 'In Progress', 'Done'];
 
+  var showInlineAdd = activeFilter === 'all' || activeFilter.indexOf('project:') === 0;
+  var inlineAddPid = activeFilter.indexOf('project:') === 0 ? parseInt(activeFilter.split(':')[1]) : null;
+
   statusOrder.forEach(function(sName) {
     var group = remaining.filter(function(t) { return t.status_name === sName; });
     if (group.length === 0) return;
@@ -921,6 +989,10 @@ function renderTasks() {
     label.textContent = sName.toUpperCase();
     container.appendChild(label);
     group.forEach(function(t) { container.appendChild(buildTaskCard(t)); });
+    if (showInlineAdd) {
+      var status = allStatuses.find(function(s) { return s.name === sName; });
+      if (status) container.appendChild(buildInlineAddRow(status.id, inlineAddPid));
+    }
   });
 
   // Tasks whose status_name doesn't match any known status

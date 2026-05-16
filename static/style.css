@@ -14,13 +14,13 @@
 }
 
 body.light {
-  --bg-base:  oklch(96%   0.007 75);
-  --bg-panel: oklch(92%   0.008 72);
-  --bg-card:  oklch(99%   0.003 75);
-  --bg-input: oklch(99%   0.003 75);
-  --border:   oklch(82%   0.009 70);
-  --text:     oklch(19%   0.012 65);
-  --text-dim: oklch(48%   0.01  68);
+  --bg-base:  oklch(95%   0.018 80);
+  --bg-panel: oklch(92%   0.018 78);
+  --bg-card:  oklch(99%   0.008 82);
+  --bg-input: oklch(100%  0.005 80);
+  --border:   oklch(84%   0.014 78);
+  --text:     oklch(18%   0.015 60);
+  --text-dim: oklch(50%   0.012 65);
   --accent:   oklch(52%   0.17  70);
 }
 
@@ -185,7 +185,7 @@ button.btn-secondary { background: var(--border); }
 
 /* ── Filter bar ── */
 .filter-bar {
-  padding: 8px 12px; border-bottom: 1px solid var(--border);
+  padding: 8px 12px 10px;
   display: flex; align-items: center; justify-content: space-between;
   gap: 8px; flex-shrink: 0;
 }
@@ -212,11 +212,13 @@ button.btn-secondary { background: var(--border); }
 .task-group-label.todo { color: var(--text-dim); }
 .task-group-label.done { color: var(--success); }
 .task-card {
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 9px 11px; margin-bottom: 8px;
-  cursor: pointer; transition: border-color .15s, background .15s;
+  background: var(--bg-card);
+  border-radius: var(--r); padding: 9px 11px; margin-bottom: 6px;
+  cursor: pointer; transition: background .15s;
 }
-.task-card:hover { border-color: oklch(70% 0.13 72 / 0.5); }
+.task-card:hover { background: oklch(70% 0.13 72 / 0.06); }
+body.light .task-card { box-shadow: 0 1px 2px oklch(0% 0 0 / 0.07); }
+body.light .task-card:hover { background: oklch(70% 0.13 72 / 0.05); }
 .task-card.priority-high  { background: oklch(60% 0.19 20 / 0.07); }
 .task-card.priority-medium { background: oklch(73% 0.15 42 / 0.05); }
 .task-card.status-done { opacity: .55; }
@@ -343,11 +345,11 @@ button.btn-secondary { background: var(--border); }
 .dashboard-stats { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
 .dashboard-stat {
   flex: 1; min-width: 80px; border-radius: var(--r); padding: 10px 12px; text-align: center;
-  border: 1px solid var(--border); background: var(--bg-card);
-  cursor: pointer; transition: border-color .15s;
+  background: var(--bg-card);
+  cursor: pointer; transition: background .15s;
 }
-.dashboard-stat:hover { border-color: var(--accent); }
-.dashboard-stat.overdue { border-color: oklch(60% 0.19 20 / 0.45); }
+.dashboard-stat:hover { background: oklch(70% 0.13 72 / 0.07); }
+.dashboard-stat.overdue { background: oklch(60% 0.19 20 / 0.07); }
 .stat-num { font-size: 22px; font-weight: 700; color: var(--text); }
 .dashboard-stat.overdue .stat-num { font-size: 28px; font-weight: 800; color: var(--danger); }
 .stat-label { color: var(--text-dim); font-size: 10px; margin-top: 2px; }
@@ -366,10 +368,10 @@ button.btn-secondary { background: var(--border); }
 .dash-task-item {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 10px; border-radius: var(--r); cursor: pointer;
-  background: var(--bg-card); border: 1px solid var(--border);
-  margin-bottom: 5px; font-size: 13px;
+  background: var(--bg-card);
+  margin-bottom: 5px; font-size: 13px; transition: background .15s;
 }
-.dash-task-item:hover { border-color: var(--accent); }
+.dash-task-item:hover { background: oklch(70% 0.13 72 / 0.07); }
 .dash-task-title { flex: 1; }
 .dash-task-project { font-size: 11px; color: var(--text-dim); }
 .dash-task-due { font-size: 11px; color: var(--danger); }
@@ -391,10 +393,11 @@ button.btn-secondary { background: var(--border); }
   gap: 10px; margin-bottom: 20px;
 }
 .dash-project-card {
-  background: var(--bg-card); border: 1px solid var(--border);
+  background: var(--bg-card);
   border-radius: var(--r); padding: 12px 14px; cursor: pointer;
+  transition: background .15s;
 }
-.dash-project-card:hover { border-color: var(--accent); }
+.dash-project-card:hover { background: oklch(70% 0.13 72 / 0.07); }
 .dash-project-name { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
 .dash-project-counts { font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
 .dash-progress-track {
@@ -427,10 +430,10 @@ button.btn-secondary { background: var(--border); }
 .dash-activity-item {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 10px; border-radius: 6px; cursor: pointer;
-  background: var(--bg-card); border: 1px solid var(--border);
-  margin-bottom: 5px; font-size: 13px;
+  background: var(--bg-card);
+  margin-bottom: 5px; font-size: 13px; transition: background .15s;
 }
-.dash-activity-item:hover { border-color: var(--accent); }
+.dash-activity-item:hover { background: oklch(70% 0.13 72 / 0.07); }
 .dash-activity-title-text { flex: 1; }
 .dash-activity-time { font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
 
@@ -504,7 +507,7 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
 /* ── View switcher ── */
 .view-switcher {
   display: flex; align-items: center; gap: 2px;
-  padding: 8px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  padding: 6px 12px; flex-shrink: 0;
   background: var(--bg-panel);
 }
 .view-tab {
@@ -547,11 +550,12 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
 }
 .board-column.drag-over .board-column-cards { background: oklch(70% 0.13 72 / 0.06); border-radius: 0 0 var(--r) var(--r); }
 .board-card {
-  background: var(--bg-card); border: 1px solid var(--border);
+  background: var(--bg-card);
   border-radius: var(--r); padding: 8px 10px;
-  cursor: grab; transition: border-color .15s, opacity .15s, background .15s;
+  cursor: grab; transition: opacity .15s, background .15s;
   font-size: 12px;
 }
+.board-card:hover { background: oklch(70% 0.13 72 / 0.06); }
 .board-card:active { cursor: grabbing; }
 .board-card.dragging { opacity: .4; }
 .board-card.priority-high   { background: oklch(60% 0.19 20 / 0.07); }
@@ -804,7 +808,7 @@ body.light .tag-row:hover { background: rgba(0,0,0,.02); }
 /* ── Onboarding tip ── */
 .onboarding-tip {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
-  background: var(--bg-elevated); border: 1px solid var(--border);
+  background: var(--bg-card); border: 1px solid var(--border);
   border-radius: var(--r); padding: 10px 14px; margin-bottom: 12px;
 }
 .onboarding-tip-text { flex: 1; font-size: 12px; color: var(--text-dim); line-height: 1.6; }
@@ -846,6 +850,27 @@ body.light .tag-row:hover { background: rgba(0,0,0,.02); }
   font-size:12px; padding:2px 4px; }
 .kb-doc-delete:hover { color: var(--danger); }
 .kb-upload-btn { display:flex; align-items:center; gap:6px; }
+
+/* ── Inline add row ── */
+.inline-add-row { margin-bottom: 6px; }
+.inline-add-trigger {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 4px; color: var(--text-dim); font-size: 12px;
+  cursor: pointer; border-radius: var(--r);
+  background: none; border: none; width: 100%; text-align: left;
+  transition: color .15s; opacity: 1;
+}
+.inline-add-trigger:hover { color: var(--accent); }
+.inline-add-form { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+.inline-add-form input {
+  flex: 1; font-size: 12px; padding: 5px 8px;
+}
+.inline-add-save { font-size: 11px; padding: 4px 10px; }
+.inline-add-cancel {
+  font-size: 11px; padding: 4px 8px;
+  background: none; border: 1px solid var(--border); color: var(--text-dim);
+}
+.inline-add-cancel:hover { color: var(--text); opacity: 1; }
 
 /* Task card doc section */
 .task-docs-section { padding:8px 12px; border-top:1px solid var(--border); }
