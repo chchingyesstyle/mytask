@@ -84,6 +84,18 @@ function logout() {
   location.reload();
 }
 
+function relativeDate(iso) {
+  var today = new Date().toISOString().split('T')[0];
+  if (iso === today) return 'today';
+  var d = new Date(iso + 'T00:00:00');
+  var t = new Date(today + 'T00:00:00');
+  var days = Math.round((d - t) / 86400000);
+  if (days === 1) return 'tomorrow';
+  if (days === -1) return 'yesterday';
+  if (days > 1) return 'in ' + days + ' days';
+  return Math.abs(days) + 'd overdue';
+}
+
 function showToast(msg, actionLabel, actionFn) {
   var t = document.createElement('div');
   t.setAttribute('role', 'status');
@@ -97,7 +109,7 @@ function showToast(msg, actionLabel, actionFn) {
   t.appendChild(msgSpan);
   var duration = 2500;
   if (actionLabel && actionFn) {
-    duration = 5000;
+    duration = 8000;
     var btn = document.createElement('button');
     btn.textContent = actionLabel;
     btn.style.cssText = 'background:none;border:none;color:var(--accent);font-size:12px;' +
@@ -283,11 +295,17 @@ function renderTagFilters() {
       'font-size:11px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s;' +
       'color:' + tag.color + ';'
     );
-    del.addEventListener('click', async function(e) {
+    del.addEventListener('click', function(e) {
       e.stopPropagation();
-      if (!confirm('Delete tag "' + tag.name + '"?')) return;
-      var resp = await fetch('/api/tags/' + tag.id, { method: 'DELETE', headers: authHeaders() });
-      if (resp.ok) { await loadTags(); } else { alert('Failed to delete tag'); }
+      allTags = allTags.filter(function(tg) { return tg.id !== tag.id; });
+      renderTagFilters();
+      var undone = false;
+      var timer = setTimeout(function() {
+        if (!undone) fetch('/api/tags/' + tag.id, { method: 'DELETE', headers: authHeaders() }).then(function() { loadTags(); });
+      }, 8000);
+      showToast('Tag deleted', 'Undo', function() {
+        undone = true; clearTimeout(timer); loadTags();
+      });
     });
 
     wrap.addEventListener('mouseenter', function() { del.style.opacity = '1'; });
@@ -658,8 +676,8 @@ function buildTaskCard(t) {
   // Due date / project meta
   var metaParts = [];
   if (t.project_name) metaParts.push(t.project_name);
-  if (t.start_date) metaParts.push('Start ' + t.start_date);
-  if (t.due_date) metaParts.push('Due ' + t.due_date);
+  if (t.start_date) metaParts.push('Start ' + relativeDate(t.start_date));
+  if (t.due_date) metaParts.push('Due ' + relativeDate(t.due_date));
   if (metaParts.length) {
     var meta = document.createElement('div');
     meta.className = 'task-meta';
@@ -717,6 +735,7 @@ function buildTaskCard(t) {
   var delBtn = document.createElement('button');
   delBtn.className = 'btn-danger';
   delBtn.textContent = 'Delete';
+  delBtn.style.marginLeft = 'auto';
   delBtn.addEventListener('click', function() { deleteTask(t.id); });
   var editBtn = document.createElement('button');
   editBtn.className = 'btn-secondary';
@@ -805,7 +824,7 @@ function renderTasks() {
   if (tasks.length === 0) {
     var p = document.createElement('p');
     p.className = 'task-list-empty';
-    p.textContent = 'No tasks here. Tell the AI to create one!';
+    p.textContent = 'No tasks. Create one above or use the AI chat.';
     container.appendChild(p);
     return;
   }
@@ -1745,8 +1764,8 @@ function buildBoardCard(t) {
   title.textContent = t.title;
   card.appendChild(title);
   var metaParts = [];
-  if (t.start_date) metaParts.push('Start ' + t.start_date);
-  if (t.due_date) metaParts.push('Due ' + t.due_date);
+  if (t.start_date) metaParts.push('Start ' + relativeDate(t.start_date));
+  if (t.due_date) metaParts.push('Due ' + relativeDate(t.due_date));
   if (metaParts.length) {
     var meta = document.createElement('div');
     meta.className = 'board-card-meta';
@@ -1843,7 +1862,7 @@ function deleteTask(id) {
   var undone = false;
   var timer = setTimeout(function() {
     if (!undone) fetch('/api/tasks/' + id, { method: 'DELETE', headers: authHeaders() });
-  }, 5000);
+  }, 8000);
   showToast('Task deleted', 'Undo', function() {
     undone = true;
     clearTimeout(timer);
@@ -2476,19 +2495,25 @@ function buildProjectCard(p, list) {
   delBtn.className = 'proj-card-del';
   delBtn.textContent = '✕';
   delBtn.title = 'Delete project';
-  delBtn.addEventListener('click', async function(e) {
+  delBtn.addEventListener('click', function(e) {
     e.stopPropagation();
-    if (!confirm('Delete project "' + p.name + '"? Tasks assigned to it will become unassigned.')) return;
-    var resp = await fetch('/api/projects/' + p.id, { method: 'DELETE', headers: authHeaders() });
-    if (resp.ok) {
-      delete projectStatusMap[p.id];
-      if (expandedProjectId === p.id) expandedProjectId = null;
-      await loadProjects();
-      await loadTasks();
-      _renderProjectsList();
-    } else {
-      alert('Failed to delete project');
-    }
+    allProjects = allProjects.filter(function(pr) { return pr.id !== p.id; });
+    if (expandedProjectId === p.id) expandedProjectId = null;
+    _renderProjectsList();
+    var undone = false;
+    var timer = setTimeout(async function() {
+      if (!undone) {
+        await fetch('/api/projects/' + p.id, { method: 'DELETE', headers: authHeaders() });
+        delete projectStatusMap[p.id];
+        await loadProjects();
+        await loadTasks();
+        _renderProjectsList();
+      }
+    }, 8000);
+    showToast('Project deleted', 'Undo', function() {
+      undone = true; clearTimeout(timer);
+      loadProjects().then(function() { _renderProjectsList(); });
+    });
   });
   hdr.appendChild(nameEl);
   hdr.appendChild(countEl);
@@ -2641,18 +2666,25 @@ function buildStatusRow(s, allProjectStatuses, projectId) {
   delBtn.textContent = '✕';
   delBtn.disabled = allProjectStatuses.length <= 1;
   delBtn.title = allProjectStatuses.length <= 1 ? 'Cannot delete the last status' : 'Delete status';
-  delBtn.addEventListener('click', async function() {
+  delBtn.addEventListener('click', function() {
     if (allProjectStatuses.length <= 1) return;
-    if (!confirm('Delete status "' + s.name + '"? Tasks will be moved to the next remaining status.')) return;
-    var resp = await fetch('/api/statuses/' + s.id, { method: 'DELETE', headers: authHeaders() });
-    if (resp.ok) {
-      var r2 = await fetch('/api/statuses?project_id=' + projectId, { headers: authHeaders() });
-      if (r2.ok) projectStatusMap[projectId] = await r2.json();
-      _renderProjectsList();
-    } else {
-      var err = await resp.json().catch(function() { return {}; });
-      alert(err.detail || 'Failed to delete status');
-    }
+    projectStatusMap[projectId] = allProjectStatuses.filter(function(st) { return st.id !== s.id; });
+    _renderProjectsList();
+    var undone = false;
+    var timer = setTimeout(async function() {
+      if (!undone) {
+        await fetch('/api/statuses/' + s.id, { method: 'DELETE', headers: authHeaders() });
+        var r2 = await fetch('/api/statuses?project_id=' + projectId, { headers: authHeaders() });
+        if (r2.ok) projectStatusMap[projectId] = await r2.json();
+        _renderProjectsList();
+      }
+    }, 8000);
+    showToast('Status deleted', 'Undo', function() {
+      undone = true; clearTimeout(timer);
+      fetch('/api/statuses?project_id=' + projectId, { headers: authHeaders() })
+        .then(function(r) { return r.json(); })
+        .then(function(data) { projectStatusMap[projectId] = data; _renderProjectsList(); });
+    });
   });
 
   controls.appendChild(editBtn);
@@ -2827,11 +2859,17 @@ function buildTagRow(tag, list) {
   delBtn.className = 'tag-row-btn';
   delBtn.textContent = '✕';
   delBtn.title = 'Delete tag';
-  delBtn.addEventListener('click', async function() {
-    if (!confirm('Delete tag "' + tag.name + '"? It will be removed from all tasks.')) return;
-    var resp = await fetch('/api/tags/' + tag.id, { method: 'DELETE', headers: authHeaders() });
-    if (resp.ok) { await loadTags(); renderTagsPage(); }
-    else { alert('Failed to delete tag'); }
+  delBtn.addEventListener('click', function() {
+    allTags = allTags.filter(function(tg) { return tg.id !== tag.id; });
+    renderTagsPage();
+    var undone = false;
+    var timer = setTimeout(function() {
+      if (!undone) fetch('/api/tags/' + tag.id, { method: 'DELETE', headers: authHeaders() })
+        .then(function() { loadTags().then(renderTagsPage); });
+    }, 8000);
+    showToast('Tag deleted', 'Undo', function() {
+      undone = true; clearTimeout(timer); loadTags().then(renderTagsPage);
+    });
   });
   controls.appendChild(editBtn);
   controls.appendChild(delBtn);
@@ -3050,14 +3088,25 @@ function renderTaskAIActions(task, detailEl) {
   var section = document.createElement('div');
   section.className = 'task-ai-section';
 
-  var label = document.createElement('div');
-  label.className = 'task-ai-label';
-  label.textContent = 'AI Actions';
-  section.appendChild(label);
+  var toggle = document.createElement('button');
+  toggle.className = 'task-ai-toggle';
+  toggle.textContent = '▸ AI Actions';
+  section.appendChild(toggle);
+
+  var aiBody = document.createElement('div');
+  aiBody.className = 'task-ai-body';
+  aiBody.style.display = 'none';
+  section.appendChild(aiBody);
+
+  toggle.addEventListener('click', function() {
+    var open = aiBody.style.display !== 'none';
+    aiBody.style.display = open ? 'none' : 'block';
+    toggle.textContent = (open ? '▸' : '▾') + ' AI Actions';
+  });
 
   var btnRow = document.createElement('div');
   btnRow.className = 'task-ai-buttons';
-  section.appendChild(btnRow);
+  aiBody.appendChild(btnRow);
 
   var customRow = document.createElement('div');
   customRow.style.cssText = 'display:flex;gap:6px;margin-top:6px';
@@ -3071,10 +3120,10 @@ function renderTaskAIActions(task, detailEl) {
   askBtn.textContent = '💬 Ask';
   customRow.appendChild(customInput);
   customRow.appendChild(askBtn);
-  section.appendChild(customRow);
+  aiBody.appendChild(customRow);
 
   var outputDiv = document.createElement('div');
-  section.appendChild(outputDiv);
+  aiBody.appendChild(outputDiv);
 
   var actions = [
     { key: 'meeting_prep', label: '📝 Meeting prep' },
@@ -3480,6 +3529,16 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('mt-title').addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeModal();
   });
+  // Stat card click-through: navigate to Tasks with matching filter
+  var statOverdue = document.getElementById('stat-overdue-num');
+  if (statOverdue) statOverdue.closest('.dashboard-stat').addEventListener('click', function() {
+    navigateTo('tasks'); setFilter('overdue', document.getElementById('filter-overdue'));
+  });
+  var statToday = document.getElementById('stat-today-num');
+  if (statToday) statToday.closest('.dashboard-stat').addEventListener('click', function() {
+    navigateTo('tasks'); setFilter('today', document.getElementById('filter-today'));
+  });
+
   document.getElementById('filter-all').addEventListener('click', function() { setFilter('all', this); });
   document.getElementById('filter-today').addEventListener('click', function() { setFilter('today', this); });
   document.getElementById('filter-overdue').addEventListener('click', function() { setFilter('overdue', this); });

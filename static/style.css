@@ -344,7 +344,9 @@ button.btn-secondary { background: var(--border); }
 .dashboard-stat {
   flex: 1; min-width: 80px; border-radius: var(--r); padding: 10px 12px; text-align: center;
   border: 1px solid var(--border); background: var(--bg-card);
+  cursor: pointer; transition: border-color .15s;
 }
+.dashboard-stat:hover { border-color: var(--accent); }
 .dashboard-stat.overdue { border-color: oklch(60% 0.19 20 / 0.45); }
 .stat-num { font-size: 22px; font-weight: 700; color: var(--text); }
 .dashboard-stat.overdue .stat-num { font-size: 28px; font-weight: 800; color: var(--danger); }
@@ -787,6 +789,13 @@ body.light .tag-row:hover { background: rgba(0,0,0,.02); }
 .task-ai-section { padding:8px 12px; border-top:1px solid var(--border); }
 .task-ai-label { font-size:10px; color:var(--text-dim); text-transform:uppercase;
   letter-spacing:.05em; margin-bottom:6px; }
+.task-ai-toggle {
+  background: none; border: none; color: var(--text-dim); font-size: 11px;
+  font-weight: 600; letter-spacing: 0.05em; cursor: pointer; padding: 6px 0 2px;
+  text-align: left; text-transform: uppercase;
+}
+.task-ai-toggle:hover { color: var(--text); opacity: 1; }
+.task-ai-body { padding-top: 4px; }
 .task-ai-buttons { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
 .task-ai-btn { font-size:11px; padding:4px 9px; }
 .task-ai-output { background:oklch(70% 0.13 72 / 0.04); border:1px solid var(--border);
