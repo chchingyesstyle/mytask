@@ -21,8 +21,14 @@ A personal task manager with an integrated AI assistant, built on FastAPI, SQLit
 ### AI
 - **AI chat assistant** — Conversational AI that can create tasks, sub-tasks, assign tags, and update status via tool calls; global KB documents injected as context
 - **AI daily briefing** — Dashboard panel with overdue/today/this-week counts and AI-generated focus note
-- **AI action buttons** — Per-task: Meeting prep, Draft email, Summarise docs, Action items
+- **AI action buttons** — Per-task (behind a disclosure toggle): Meeting prep, Draft email, Summarise docs, Action items
 - **Custom AI prompt** — Free-text input on any task card; sends your question with full task + KB context (Ctrl+Enter to submit)
+
+### Dashboard
+- **Stat cards** — Overdue, Due Today, This Week, Coming Up (8-30 days); click Overdue or Today to jump to the filtered task list
+- **Project progress** — Completion bars across all active projects
+- **7-day sparkline** — Bar chart of tasks completed over the last 7 days
+- **Recent activity** — List of recently updated tasks with relative timestamps
 
 ### Knowledge Base
 - **Global KB** — Upload PDF, DOCX, TXT, MD, PNG, JPG files as global reference documents; text extracted at upload (images via OpenAI Vision OCR)
@@ -30,10 +36,14 @@ A personal task manager with an integrated AI assistant, built on FastAPI, SQLit
 - **AI context injection** — KB docs automatically included in AI action calls and chat panel
 
 ### UI & UX
+- **OKLCH color system** — Warm charcoal base with amber accent; perceptually uniform across both modes
 - **Light / dark mode** — Toggle in sidebar; persists across sessions via localStorage
+- **Relative dates** — Task card meta shows "Due today", "Due tomorrow", "in 3 days", "2d overdue" instead of raw ISO strings
+- **Undo-on-delete** — Deleting any task, tag, project, or status shows an 8-second undo toast; no confirm dialogs anywhere
 - **Mobile responsive** — Hamburger drawer nav for small screens
 - **Change password** — Any user can change their own password from the sidebar footer
 - **Admin panel** — Manage users and tags
+- **Keyboard navigation** — Full focus-visible rings; Escape closes modals; Enter/Ctrl+Enter shortcuts throughout
 
 ## Tech Stack
 
@@ -43,7 +53,7 @@ A personal task manager with an integrated AI assistant, built on FastAPI, SQLit
 | Auth | JWT (python-jose), bcrypt |
 | AI | Any OpenAI-compatible API (LiteLLM, NVIDIA NIM, OpenAI, etc.) |
 | Doc extraction | pdfplumber (PDF), python-docx (DOCX), OpenAI Vision (images) |
-| Frontend | Vanilla JS, CSS custom properties — no build step |
+| Frontend | Vanilla JS, CSS custom properties (OKLCH) — no build step |
 | Infra | Docker Compose, Nginx reverse proxy, SSL |
 
 ## Quick Start
@@ -89,6 +99,14 @@ Open `http://localhost:8080`. Login: `admin` / value of `ADMIN_PASSWORD`.
 ./docker.sh logs      # follow app logs
 ```
 
+Static file changes (JS/CSS/HTML) can be hot-copied without a rebuild:
+
+```bash
+docker cp static/app.js mytask-mytask-1:/app/static/app.js
+docker cp static/style.css mytask-mytask-1:/app/static/style.css
+docker cp static/index.html mytask-mytask-1:/app/static/index.html
+```
+
 ## Project Structure
 
 ```
@@ -98,11 +116,11 @@ Open `http://localhost:8080`. Login: `admin` / value of `ADMIN_PASSWORD`.
 ├── auth.py              # JWT helpers, password hashing
 ├── seed.py              # Seeds admin user on startup (reads ADMIN_PASSWORD from env)
 ├── routers/
-│   ├── auth.py          # POST /api/auth/login, GET /api/auth/me
+│   ├── auth.py          # POST /api/auth/login, GET /api/auth/me, PUT /api/auth/password
 │   ├── tasks.py         # CRUD /api/tasks; POST /api/tasks/{id}/ai-action
 │   ├── tags.py          # CRUD /api/tags
-│   ├── dashboard.py     # GET /api/dashboard — counts + AI briefing
-│   ├── projects.py      # CRUD /api/projects
+│   ├── dashboard.py     # GET /api/dashboard — counts + sparkline + activity + AI briefing
+│   ├── projects.py      # CRUD /api/projects + /api/statuses
 │   ├── users.py         # Admin user management
 │   ├── chat.py          # POST /api/chat — SSE streaming AI chat + KB context
 │   └── kb.py            # POST/GET/DELETE /api/kb — document upload and management
@@ -115,11 +133,13 @@ Open `http://localhost:8080`. Login: `admin` / value of `ADMIN_PASSWORD`.
 │   └── uploads/         # KB uploaded files (persisted, bind-mounted)
 ├── static/
 │   ├── index.html       # Main app shell
-│   ├── app.js           # All frontend logic
-│   ├── style.css        # CSS with custom properties; body.light overrides for light mode
+│   ├── app.js           # All frontend logic (~3500 lines)
+│   ├── style.css        # CSS with OKLCH custom properties; body.light overrides
 │   ├── admin.html       # Admin panel
 │   └── admin.js         # Admin panel logic
-└── tests/               # pytest test suite (99 tests)
+├── .impeccable/
+│   └── critique/        # UX critique snapshots (impeccable tool)
+└── tests/               # pytest test suite (107 tests)
 ```
 
 ## API Overview
@@ -128,16 +148,17 @@ Open `http://localhost:8080`. Login: `admin` / value of `ADMIN_PASSWORD`.
 |--------|------|------|-------------|
 | POST | `/api/auth/login` | — | Login, returns JWT |
 | GET | `/api/auth/me` | user | Current user info |
+| PUT | `/api/auth/password` | user | Change own password (requires current password) |
 | GET | `/api/info` | — | Active model name |
 | GET | `/api/tasks` | user | List root tasks (`?parent_id=N`, `?tag_id=N`) |
 | POST | `/api/tasks` | user | Create task |
 | PUT | `/api/tasks/{id}` | user | Update task (supports null to clear fields) |
 | DELETE | `/api/tasks/{id}` | user | Delete task (cascades) |
 | POST | `/api/tasks/{id}/ai-action` | user | AI action: meeting_prep / draft_email / summarise / action_items / custom |
-| PUT | `/api/auth/password` | user | Change own password (requires current password) |
-| GET | `/api/dashboard` | user | Counts + AI briefing |
+| GET | `/api/dashboard` | user | Counts + sparkline + activity + AI briefing |
 | GET/POST/DELETE | `/api/tags` | user | Tag management |
 | GET/POST/DELETE | `/api/projects` | user | Project management |
+| GET/POST/DELETE | `/api/statuses` | user | Project status management |
 | POST | `/api/chat` | user | SSE streaming AI chat |
 | POST | `/api/kb` | user | Upload document (multipart; optional `task_id`) |
 | GET | `/api/kb` | user | List docs (`?global=true` or `?task_id=N`) |
@@ -149,7 +170,7 @@ Open `http://localhost:8080`. Login: `admin` / value of `ADMIN_PASSWORD`.
 python3 -m pytest -v
 ```
 
-100 tests covering auth, tasks, subtasks, tags, dashboard, projects, users, AI agent tools, and KB endpoints.
+107 tests covering auth, tasks, subtasks, tags, dashboard, projects, users, AI agent tools, and KB endpoints.
 
 ## Data Persistence
 

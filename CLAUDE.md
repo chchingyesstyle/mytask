@@ -56,12 +56,14 @@ docker cp static/index.html mytask-mytask-1:/app/static/index.html
 - `POST /api/tasks/{id}/ai-action` — body `{action, custom_prompt?}`; action one of meeting_prep/draft_email/summarise/action_items/custom
 - `GET /api/kb` accepts `?global=true` or `?task_id=N`; `global` is a Python reserved word — use `Query(alias="global")` in FastAPI
 - `PUT /api/auth/password` — body `{current_password, new_password}`; verifies current hash, min 6 chars; any authenticated user
+- `GET /api/dashboard` returns: `overdue`, `due_today`, `due_week`, `due_30` (Coming Up, 8-30 days), `ai_briefing`, `overdue_tasks`, `today_tasks`, `projects`, `completed_7d`, `recent_activity`
 
 **Auth:**
 - `get_current_user` dependency in `auth.py` — inject via `Depends(get_current_user)`
 - Admin-only routes check `current_user.role != "admin"` and raise `HTTPException(403)`
 
 **Frontend:**
+- Never use `innerHTML` for dynamic DOM — the pre-commit security hook rejects it; always use `document.createElement` + `textContent`
 - `hexToRgba(hex, alpha)` helper converts tag hex colours to rgba for inline styles
 - Tag pills get background/color set inline by JS — `.tag-pill` CSS class is structural only
 - `loadDashboard()` is called from `loadTasks()` on every task list refresh, and from `navigateTo('dashboard')` when the user switches to the Dashboard page
@@ -81,18 +83,50 @@ docker cp static/index.html mytask-mytask-1:/app/static/index.html
 - Admin users need both `admin-link` (sidebar) and `admin-link-drawer` (mobile drawer) revealed in `initApp()`
 - CSS z-index stack: `.modal-overlay` 400 > `.mobile-drawer` 300 > `.drawer-overlay` 299 > `.chat-fab`/`.chat-widget` 200
 
+**Destructive actions — undo-toast pattern (no confirm dialogs):**
+- All deletions (task, tag, project, status) use optimistic removal + 8-second undo toast
+- `deleteTask(id)` — removes from `allTasks`, calls `renderCurrentView()`, schedules `fetch DELETE` after 8s; undo cancels the timeout and calls `loadTasks()`
+- Tag/project/status deletions follow the same pattern: remove from in-memory array, re-render, schedule DELETE, undo = cancel + reload
+- `window.confirm()` is not used anywhere in the main app — it cannot be styled and breaks the dark UI
+- `showToast(msg, actionLabel?, actionFn?)` — if `actionLabel`/`actionFn` provided, renders an Undo button and shows for 8s; plain toasts show for 2.5s
+
+**Date display:**
+- `relativeDate(iso)` — converts an ISO date string to human-readable: "today", "tomorrow", "yesterday", "in N days", "Nd overdue"
+- Applied to task card meta (list view and board view); table and timeline still use raw ISO for precision
+
+**Dashboard:**
+- Stat cards (Overdue, Due Today, This Week, Coming Up) are clickable — Overdue and Today navigate to the Tasks page with the matching filter applied
+- `loadDashboard()` renders stat cards, AI briefing, task lists, project progress bars, 7-day sparkline, and recent activity
+- AI briefing uses a separate non-streaming call in `routers/dashboard.py`; falls back to `null` on any error
+
+**AI actions:**
+- `renderTaskAIActions(task, detailEl)` — renders a `▸ AI Actions` disclosure toggle; body hidden by default, expands on click
+- When collapsed, the expanded task card shows 5 zones (status, edit, tags, subtasks, AI toggle); full AI interface only visible when expanded
+- Error messages use `var(--danger)` (not hardcoded `#ef4444`)
+
+**Color system:**
+- CSS custom properties use OKLCH throughout; no hardcoded hex colors in `style.css` (except `rgba(0,0,0,...)` for shadows/overlays)
+- Dark mode vars defined on `:root`; light mode overrides on `body.light`
+- `body.light` CSS class overrides all `--bg-*`/`--border`/`--text` vars; `applyTheme(theme)` syncs class + localStorage + button labels
+- Sidebar icons use Unicode geometric symbols (✓ ◈ ⊡ # ◎ ⚙) — no emoji
+
+**Accessibility:**
+- `button:focus-visible` and `input:focus-visible` show a 2px accent-color outline; `outline: none` is set on elements but `:focus-visible` overrides it for keyboard users
+- `#overdue-badge` has `role="status"` and `aria-live="polite"`; `#ai-dot` has `role="status"` and `aria-label="AI ready"`
+- `@media (prefers-reduced-motion: reduce)` disables all transitions/animations
+- `loadTasks()` is wrapped in try/catch; network failures render an inline `.load-error` div with a retry button
+
 **Mobile / CSS gotchas:**
 - `overflow-y: auto` on a flex item does nothing without `min-height: 0` — the item won't shrink below its content height
 - iOS Safari changes viewport height as the address bar shows/hides — never rely on items pinned to the bottom of a flex container being visible; put them *inside* the scroll container with a `flex:1` `.drawer-spacer` div above them
 - Use `height: 100vh; height: 100dvh` (both declarations) for full-height fixed elements on iOS
 - Add `-webkit-overflow-scrolling: touch` to any scrollable container for iOS momentum scrolling
-- `body.light` CSS class overrides all `--bg-*`/`--border`/`--text` vars; `applyTheme(theme)` syncs class + localStorage + button labels
 - `TABLE_COLS`, `tableSort`, `tableExpanded`, `tableHiddenCols` (localStorage) — table view state vars
 - `renderTable()`, `buildTableRow()`, `buildSubtaskRow()`, `openTableCellEdit()` — table view; wired via `renderCurrentView()`
-- `renderKBPage()`, `buildKBDocCard()` — KB sidebar page; register in `navigateTo()` and add click listeners in `DOMContentLoaded`
+- `renderKBPage()`, `buildKBDocCard()` — KB sidebar page (label: "Knowledge"); register in `navigateTo()` and add click listeners in `DOMContentLoaded`
 - `renderTaskDocs(task, detailEl)`, `renderTaskAIActions(task, detailEl)` — called from `toggleTask()` when card expands
 - Calendar and timeline both span `start_date` → `due_date`; don't index only by `due_date`
-- `showToast(msg)` — fixed bottom notification; use for save/action confirmations
+- `showToast(msg, actionLabel?, actionFn?)` — fixed bottom notification; supports optional Undo button; use for save/action confirmations
 
 **AI agent:**
 - Tools: `create_task`, `update_task`, `delete_task`, `list_tasks`, `create_subtask`, `add_tag_to_task`, `remove_tag_from_task`
@@ -109,7 +143,7 @@ docker cp static/index.html mytask-mytask-1:/app/static/index.html
 - `tests/conftest.py` — `client` (unauthenticated), `seeded_client` (has data), `admin_headers` (returns `(client, headers)` tuple)
 - Tests use in-memory SQLite — the `conftest.py` overrides the engine before app import
 - Async AI calls in dashboard/agent are mocked with `AsyncMock` + `patch("routers.dashboard.client.chat.completions.create", ...)`
-- 100 tests; all must pass before merging
+- 107 tests; all must pass before merging
 - `seeded_client` fixture takes `monkeypatch` and sets `ADMIN_PASSWORD` env var — required since seed.py reads it from env
 
 ## Deployment
