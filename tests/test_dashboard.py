@@ -66,3 +66,60 @@ def test_dashboard_ai_failure_returns_null(admin_headers):
         resp = client.get("/api/dashboard", headers=headers)
     assert resp.status_code == 200
     assert resp.json()["ai_briefing"] is None
+
+def test_dashboard_overdue_tasks_list(admin_headers):
+    from datetime import date, timedelta
+    client, headers = admin_headers
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    client.post("/api/tasks", json={"title": "Fix server", "due_date": yesterday, "priority": "high"}, headers=headers)
+    with patch("routers.dashboard.client.chat.completions.create", new=AsyncMock(side_effect=Exception("skip"))):
+        resp = client.get("/api/dashboard", headers=headers)
+    data = resp.json()
+    assert len(data["overdue_tasks"]) == 1
+    assert data["overdue_tasks"][0]["title"] == "Fix server"
+    assert data["overdue_tasks"][0]["priority"] == "high"
+
+def test_dashboard_today_tasks_list(admin_headers):
+    from datetime import date
+    client, headers = admin_headers
+    today = date.today().isoformat()
+    client.post("/api/tasks", json={"title": "Deploy hotfix", "due_date": today}, headers=headers)
+    with patch("routers.dashboard.client.chat.completions.create", new=AsyncMock(side_effect=Exception("skip"))):
+        resp = client.get("/api/dashboard", headers=headers)
+    data = resp.json()
+    assert len(data["today_tasks"]) == 1
+    assert data["today_tasks"][0]["title"] == "Deploy hotfix"
+
+def test_dashboard_projects_stats(admin_headers):
+    client, headers = admin_headers
+    proj_r = client.post("/api/projects", json={"name": "Alpha"}, headers=headers)
+    proj_id = proj_r.json()["id"]
+    client.post("/api/tasks", json={"title": "T1", "project_id": proj_id}, headers=headers)
+    t2 = client.post("/api/tasks", json={"title": "T2", "project_id": proj_id}, headers=headers).json()
+    client.put(f"/api/tasks/{t2['id']}", json={"status_id": 3}, headers=headers)
+    with patch("routers.dashboard.client.chat.completions.create", new=AsyncMock(side_effect=Exception("skip"))):
+        resp = client.get("/api/dashboard", headers=headers)
+    projects = resp.json()["projects"]
+    alpha = next(p for p in projects if p["name"] == "Alpha")
+    assert alpha["total"] == 2
+    assert alpha["done"] == 1
+
+def test_dashboard_completed_7d(admin_headers):
+    client, headers = admin_headers
+    t = client.post("/api/tasks", json={"title": "Completed now"}, headers=headers).json()
+    client.put(f"/api/tasks/{t['id']}", json={"status_id": 3}, headers=headers)
+    with patch("routers.dashboard.client.chat.completions.create", new=AsyncMock(side_effect=Exception("skip"))):
+        resp = client.get("/api/dashboard", headers=headers)
+    c7d = resp.json()["completed_7d"]
+    assert len(c7d) == 7
+    assert c7d[6] >= 1
+
+def test_dashboard_recent_activity(admin_headers):
+    client, headers = admin_headers
+    client.post("/api/tasks", json={"title": "Recent work"}, headers=headers)
+    with patch("routers.dashboard.client.chat.completions.create", new=AsyncMock(side_effect=Exception("skip"))):
+        resp = client.get("/api/dashboard", headers=headers)
+    activity = resp.json()["recent_activity"]
+    assert len(activity) >= 1
+    assert activity[0]["title"] == "Recent work"
+    assert "updated_at" in activity[0]
