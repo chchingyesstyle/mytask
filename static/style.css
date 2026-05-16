@@ -136,11 +136,11 @@ button.btn-secondary { background: var(--border); }
 
 /* ── Mobile drawer ── */
 .mobile-drawer {
-  position: fixed; top: 0; left: -200px; width: 200px;
+  position: fixed; top: 0; left: 0; width: 200px;
   height: 100vh; height: 100dvh;
   background: var(--bg-panel); border-right: 1px solid var(--border);
   z-index: 300; display: flex; flex-direction: column;
-  transition: left .25s ease; overflow: hidden;
+  transform: translateX(-100%); transition: transform .25s ease-out; overflow: hidden;
 }
 .mobile-drawer .sidebar-nav {
   flex: 1; min-height: 0; overflow-y: auto;
@@ -148,7 +148,7 @@ button.btn-secondary { background: var(--border); }
   display: flex; flex-direction: column;
 }
 .drawer-spacer { flex: 1; min-height: 16px; }
-.mobile-drawer.open { left: 0; }
+.mobile-drawer.open { transform: translateX(0); }
 .drawer-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,.5); z-index: 299;
@@ -401,7 +401,8 @@ button.btn-secondary { background: var(--border); }
   height: 5px; border-radius: 3px; background: var(--border); overflow: hidden;
 }
 .dash-progress-fill {
-  height: 100%; border-radius: 3px; background: var(--success); transition: width .3s;
+  height: 100%; border-radius: 3px; background: var(--success);
+  width: 100%; transform-origin: left; transform: scaleX(0); transition: transform .3s ease-out;
 }
 
 /* ── Dashboard: bottom row ────────────────────────────── */
@@ -675,8 +676,12 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
   border-top: 1px dashed var(--border); margin: 8px 0;
   color: var(--text-dim); font-size: 10px; padding-top: 4px;
 }
-.task-list-empty { color: var(--text-dim); font-size: 13px; padding: 24px 16px; text-align: center; }
+.task-list-empty { color: var(--text-dim); font-size: 13px; padding: 24px 16px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.task-list-empty p { margin: 0; }
 .tl-empty { color: var(--text-dim); font-size: 12px; padding: 24px; text-align: center; }
+.dash-empty-state { padding: 16px; }
+.dash-empty-state p { margin: 0 0 4px; font-size: 13px; color: var(--text); }
+.dash-empty-hint { color: var(--text-dim); font-size: 11px; }
 
 /* ── Projects page ── */
 .proj-list { padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; }

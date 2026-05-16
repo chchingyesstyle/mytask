@@ -488,6 +488,21 @@ function renderDashTaskLists(data) {
 
   makeList(data.overdue_tasks, 'Overdue', overdueLabel);
   makeList(data.today_tasks, 'Due Today', function() { return 'today'; });
+
+  var hasLists = (data.overdue_tasks && data.overdue_tasks.length > 0) ||
+                 (data.today_tasks && data.today_tasks.length > 0);
+  if (!hasLists) {
+    var emptyDash = document.createElement('div');
+    emptyDash.className = 'dash-empty-state';
+    var emptyText = document.createElement('p');
+    emptyText.textContent = 'Nothing overdue or due today.';
+    var emptyHint = document.createElement('p');
+    emptyHint.className = 'dash-empty-hint';
+    emptyHint.textContent = 'Use the Tasks page to plan ahead, or tell the AI what to add.';
+    emptyDash.appendChild(emptyText);
+    emptyDash.appendChild(emptyHint);
+    container.appendChild(emptyDash);
+  }
 }
 
 function renderDashProjects(data) {
@@ -522,7 +537,7 @@ function renderDashProjects(data) {
     track.className = 'dash-progress-track';
     var fill = document.createElement('div');
     fill.className = 'dash-progress-fill';
-    fill.style.width = (proj.total > 0 ? Math.round((proj.done / proj.total) * 100) : 0) + '%';
+    fill.style.transform = 'scaleX(' + (proj.total > 0 ? proj.done / proj.total : 0) + ')';
     track.appendChild(fill);
     card.appendChild(track);
 
@@ -823,10 +838,18 @@ function renderTasks() {
   while (container.firstChild) container.removeChild(container.firstChild);
 
   if (tasks.length === 0) {
-    var p = document.createElement('p');
-    p.className = 'task-list-empty';
-    p.textContent = 'No tasks. Create one above or use the AI chat.';
-    container.appendChild(p);
+    var emptyWrap = document.createElement('div');
+    emptyWrap.className = 'task-list-empty';
+    var emptyMsg = document.createElement('p');
+    emptyMsg.textContent = activeFilter === 'all' ? 'No tasks yet.' : 'No tasks match this filter.';
+    emptyWrap.appendChild(emptyMsg);
+    if (activeFilter === 'all') {
+      var emptyBtn = document.createElement('button');
+      emptyBtn.textContent = '+ New Task';
+      emptyBtn.addEventListener('click', function() { openNewTaskModal(null, null, null); });
+      emptyWrap.appendChild(emptyBtn);
+    }
+    container.appendChild(emptyWrap);
     return;
   }
 
@@ -2457,7 +2480,9 @@ function openNewTaskModal(dueDate, projectId, statusId) {
   if (projectId) projectSel.value = projectId;
   modal.dataset.preselectStatusId = statusId || '';
   modal.style.display = 'flex';
-  document.getElementById('mt-title').focus();
+  var titleInp = document.getElementById('mt-title');
+  titleInp.focus();
+  document.getElementById('modal-create-btn').disabled = !titleInp.value.trim();
 }
 
 function closeModal() {
@@ -3746,7 +3771,11 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('task-modal').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
   });
-  document.getElementById('mt-title').addEventListener('keydown', function(e) {
+  var mtTitleInput = document.getElementById('mt-title');
+  var modalCreateBtn = document.getElementById('modal-create-btn');
+  function syncCreateBtn() { modalCreateBtn.disabled = !mtTitleInput.value.trim(); }
+  mtTitleInput.addEventListener('input', syncCreateBtn);
+  mtTitleInput.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeModal();
   });
   // Stat card click-through: navigate to Tasks with matching filter
@@ -3799,6 +3828,20 @@ document.addEventListener('DOMContentLoaded', function() {
     currentTimelineOffset += 7;
     renderTimeline();
   });
+  document.addEventListener('keydown', function(e) {
+    var tag = (e.target.tagName || '').toLowerCase();
+    var inInput = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable;
+    var modalOpen = document.getElementById('task-modal').style.display !== 'none' ||
+                    document.getElementById('change-password-modal').style.display !== 'none';
+    if (e.key === 'Escape' && !inInput && !modalOpen && expandedTaskId !== null) {
+      expandedTaskId = null;
+      renderCurrentView();
+    }
+    if ((e.key === 'n' || e.key === 'N') && !inInput && !modalOpen && currentPage === 'tasks') {
+      openNewTaskModal(null, null, null);
+    }
+  });
+
   function onThemeToggle() {
     var current = localStorage.getItem('theme') || 'dark';
     applyTheme(current === 'light' ? 'dark' : 'light');
