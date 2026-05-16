@@ -47,6 +47,10 @@ async def dashboard(
         models.Task.due_date > today,
         models.Task.due_date <= week_end,
     ).count()
+    coming_up_count = base.filter(
+        models.Task.due_date > week_end,
+        models.Task.due_date <= today + timedelta(days=30),
+    ).count()
 
     # Project progress
     projects = db.query(models.Project).filter(
@@ -111,6 +115,7 @@ async def dashboard(
         "overdue": len(overdue_tasks),
         "due_today": len(today_tasks),
         "due_week": week_count,
+        "due_30": coming_up_count,
         "ai_briefing": ai_briefing,
         "overdue_tasks": [_task_mini(t) for t in overdue_tasks],
         "today_tasks": [_task_mini(t) for t in today_tasks],

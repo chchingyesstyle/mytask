@@ -359,6 +359,7 @@ async function loadDashboard() {
       document.getElementById('stat-overdue-num').textContent = data.overdue;
       document.getElementById('stat-today-num').textContent = data.due_today;
       document.getElementById('stat-week-num').textContent = data.due_week;
+      document.getElementById('stat-coming-num').textContent = data.due_30;
       var briefingEl = document.getElementById('dashboard-briefing');
       if (briefingEl) {
         if (data.ai_briefing) {

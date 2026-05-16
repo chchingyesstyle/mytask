@@ -336,10 +336,12 @@ button.btn-secondary { background: var(--border); }
 .dashboard-stat.overdue { background: #3d1515; border-color: var(--danger); }
 .dashboard-stat.today   { background: #2a1e0f; border-color: var(--warning); }
 .dashboard-stat.week    { background: #0f1f15; border-color: var(--success); }
+.dashboard-stat.coming  { background: #0f1525; border-color: var(--accent); }
 .stat-num { font-size: 22px; font-weight: 700; }
 .dashboard-stat.overdue .stat-num { color: var(--danger); }
 .dashboard-stat.today   .stat-num { color: var(--warning); }
 .dashboard-stat.week    .stat-num { color: var(--success); }
+.dashboard-stat.coming  .stat-num { color: var(--accent); }
 .stat-label { color: var(--text-dim); font-size: 10px; margin-top: 2px; }
 .briefing-line {
   background: var(--bg-card); border-radius: var(--r); padding: 10px 12px;
