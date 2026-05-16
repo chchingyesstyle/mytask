@@ -9,14 +9,17 @@ import models
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
-def _task_mini(t):
-    return {
+def _task_mini(t, include_updated_at=False):
+    d = {
         "id": t.id,
         "title": t.title,
         "priority": t.priority,
         "due_date": t.due_date.isoformat() if t.due_date else None,
         "project_name": t.project.name if t.project else None,
     }
+    if include_updated_at:
+        d["updated_at"] = t.updated_at.isoformat()
+    return d
 
 
 @router.get("")
@@ -70,8 +73,9 @@ async def dashboard(
         models.Task.completed_at >= seven_days_ago,
     ).all()
     completed_7d = [0] * 7
+    today_utc = dt.utcnow().date()
     for t in completed_tasks:
-        delta = (today - t.completed_at.date()).days
+        delta = (today_utc - t.completed_at.date()).days
         if 0 <= delta <= 6:
             completed_7d[6 - delta] += 1
 
@@ -80,15 +84,7 @@ async def dashboard(
         models.Task.owner_id == current_user.id,
         models.Task.parent_id == None,  # noqa: E711
     ).order_by(models.Task.updated_at.desc()).limit(5).all()
-    recent_activity = [
-        {
-            "id": t.id,
-            "title": t.title,
-            "priority": t.priority,
-            "updated_at": t.updated_at.isoformat(),
-        }
-        for t in recent
-    ]
+    recent_activity = [_task_mini(t, include_updated_at=True) for t in recent]
 
     ai_briefing = None
     try:
