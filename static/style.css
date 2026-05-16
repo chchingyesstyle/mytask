@@ -350,13 +350,10 @@ button.btn-secondary { background: var(--border); }
 
 /* ── Dashboard: task lists ─────────────────────────────── */
 .dash-task-list { margin-bottom: 20px; }
-.dash-task-list-title {
-  font-size: 11px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: .05em; color: var(--text-dim); margin-bottom: 8px;
-}
+#dashboard-task-lists:not(:empty) { margin-top: 16px; }
 .dash-task-item {
   display: flex; align-items: center; gap: 8px;
-  padding: 7px 10px; border-radius: 6px; cursor: pointer;
+  padding: 7px 10px; border-radius: var(--r); cursor: pointer;
   background: var(--bg-card); border: 1px solid var(--border);
   margin-bottom: 5px; font-size: 13px;
 }
@@ -383,7 +380,7 @@ button.btn-secondary { background: var(--border); }
 }
 .dash-project-card {
   background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 8px; padding: 12px 14px; cursor: pointer;
+  border-radius: var(--r); padding: 12px 14px; cursor: pointer;
 }
 .dash-project-card:hover { border-color: var(--accent); }
 .dash-project-name { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
