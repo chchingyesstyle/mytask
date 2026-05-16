@@ -5,12 +5,14 @@
   --bg-input: oklch(11% 0.007 65);
   --border:   oklch(27% 0.01  65);
   --text:     oklch(87% 0.006 70);
-  --text-dim: oklch(58% 0.01  68);
+  --text-dim: oklch(67% 0.01  68);
   --accent:   oklch(67% 0.16 228);
   --danger:   oklch(60% 0.19  20);
   --warning:  oklch(73% 0.15  42);
   --success:  oklch(62% 0.14 155);
   --r: 6px;
+  --r-sm: 4px;
+  --r-lg: 10px;
 }
 
 body.light {
@@ -20,7 +22,7 @@ body.light {
   --bg-input: oklch(100%  0.005 80);
   --border:   oklch(84%   0.014 78);
   --text:     oklch(18%   0.015 60);
-  --text-dim: oklch(50%   0.012 65);
+  --text-dim: oklch(43%   0.012 65);
   --accent:   oklch(45%   0.19  228);
 }
 
@@ -69,6 +71,8 @@ button:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 button.btn-secondary { background: var(--border); }
+button.btn-sm { font-size: 11px; padding: 4px 10px; }
+button.btn-xs { font-size: 11px; padding: 2px 8px; }
 .error-msg {
   background: oklch(60% 0.19 20 / 0.12); color: var(--danger);
   border: 1px solid oklch(60% 0.19 20 / 0.4); padding: 8px 12px;
@@ -252,7 +256,7 @@ body.light .task-card:hover { background: oklch(67% 0.16 228 / 0.05); }
   position: fixed; bottom: 74px; right: 20px;
   width: 280px; height: 340px;
   background: var(--bg-panel); border: 1px solid var(--border);
-  border-radius: 10px 10px 0 10px;
+  border-radius: var(--r-lg) var(--r-lg) 0 var(--r-lg);
   display: flex; flex-direction: column;
   box-shadow: 0 8px 32px rgba(0,0,0,.4);
   z-index: 200;
@@ -315,7 +319,7 @@ body.light .task-card:hover { background: oklch(67% 0.16 228 / 0.05); }
 }
 .modal-box {
   background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 10px; padding: 24px; width: 360px;
+  border-radius: var(--r-lg); padding: 24px; width: 360px;
   display: flex; flex-direction: column; gap: 12px;
 }
 .modal-box h3 { font-size: 16px; }
@@ -353,7 +357,7 @@ body.light .task-card:hover { background: oklch(67% 0.16 228 / 0.05); }
 .stat-num { font-size: 22px; font-weight: 700; color: var(--text); }
 .dashboard-stat.overdue .stat-num { font-size: 28px; font-weight: 800; color: var(--danger); }
 .stat-label { color: var(--text-dim); font-size: 10px; margin-top: 2px; }
-.dashboard-stat.overdue .stat-label { color: oklch(60% 0.19 20 / 0.8); }
+.dashboard-stat.overdue .stat-label { color: var(--danger); }
 .briefing-line {
   background: var(--bg-card); border-radius: var(--r); padding: 10px 12px;
   font-size: 12px; color: var(--text-dim); line-height: 1.5;
@@ -669,7 +673,7 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
   position: absolute; top: 4px; height: 20px; border-radius: 3px;
   cursor: ew-resize; transition: opacity .15s; min-width: 8px;
   display: flex; align-items: center; padding: 0 4px;
-  font-size: 9px; color: oklch(99% 0.003 75 / 0.85);
+  font-size: 11px; color: oklch(99% 0.003 75 / 0.90);
   user-select: none; white-space: nowrap; overflow: hidden;
 }
 .gantt-bar:hover { opacity: .85; }

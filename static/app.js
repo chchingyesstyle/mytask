@@ -143,7 +143,7 @@ async function initApp() {
     fetch('/api/info').then(function(r) { return r.json(); }).then(function(d) {
       var el = document.getElementById('chat-model-label');
       if (el) el.textContent = d.model || '';
-    });
+    }).catch(function() {});
     document.getElementById('chat-fab').style.display = 'flex';
     await loadProjects();
     await loadTags();
@@ -194,7 +194,7 @@ function toggleChat() {
   var fab = document.getElementById('chat-fab');
   if (!widget || !fab) return;
   widget.style.display = chatOpen ? 'flex' : 'none';
-  fab.textContent = chatOpen ? '✕' : '💬';
+  fab.textContent = chatOpen ? '✕' : '◈';
   if (chatOpen) {
     var msgs = document.getElementById('chat-messages');
     msgs.scrollTop = msgs.scrollHeight;
@@ -715,6 +715,12 @@ function buildTaskCard(t) {
   var card = document.createElement('div');
   card.className = 'task-card priority-' + t.priority + (t.status_name === 'Done' ? ' status-done' : '');
   card.id = 'task-card-' + t.id;
+  card.setAttribute('tabindex', '0');
+  card.setAttribute('role', 'button');
+  card.setAttribute('aria-label', t.title);
+  card.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTask(t.id); }
+  });
 
   var top = document.createElement('div');
   top.className = 'task-card-top';
@@ -3425,7 +3431,8 @@ function renderTaskDocs(task, detailEl) {
         del.addEventListener('click', function(e) {
           e.stopPropagation();
           fetch('/api/kb/' + doc.id, { method: 'DELETE', headers: authHeaders() })
-            .then(function() { renderTaskDocs(task, detailEl); });
+            .then(function() { renderTaskDocs(task, detailEl); })
+            .catch(function() { showToast('Delete failed.'); });
         });
         pill.appendChild(del);
         pills.appendChild(pill);
@@ -3452,7 +3459,13 @@ function renderTaskDocs(task, detailEl) {
         });
         Promise.all(promises).then(function() {
           fi.value = '';
+          attachBtn.textContent = '+ Attach';
+          attachBtn.disabled = false;
           renderTaskDocs(task, detailEl);
+        }).catch(function() {
+          attachBtn.textContent = '+ Attach';
+          attachBtn.disabled = false;
+          showToast('Upload failed. Please try again.');
         });
       });
       attachBtn.addEventListener('click', function() { fi.click(); });
@@ -3500,7 +3513,7 @@ function renderTaskAIActions(task, detailEl) {
   var askBtn = document.createElement('button');
   askBtn.className = 'btn-primary task-ai-btn';
   askBtn.style.alignSelf = 'flex-end';
-  askBtn.textContent = '💬 Ask';
+  askBtn.textContent = 'Ask';
   customRow.appendChild(customInput);
   customRow.appendChild(askBtn);
   aiBody.appendChild(customRow);
@@ -3509,10 +3522,10 @@ function renderTaskAIActions(task, detailEl) {
   aiBody.appendChild(outputDiv);
 
   var actions = [
-    { key: 'meeting_prep', label: '📝 Meeting prep' },
-    { key: 'draft_email',  label: '✉️ Draft email' },
-    { key: 'summarise',    label: '📋 Summarise' },
-    { key: 'action_items', label: '✅ Action items' }
+    { key: 'meeting_prep', label: 'Meeting prep' },
+    { key: 'draft_email',  label: 'Draft email' },
+    { key: 'summarise',    label: 'Summarise' },
+    { key: 'action_items', label: 'Action items' }
   ];
 
   // Shared: render an AI result block with Copy, Regenerate, and Follow-up reply input
@@ -3534,11 +3547,11 @@ function renderTaskAIActions(task, detailEl) {
 
     var copyBtn = document.createElement('button');
     copyBtn.className = 'btn-primary task-ai-btn';
-    copyBtn.textContent = '📋 Copy';
+    copyBtn.textContent = 'Copy';
     copyBtn.addEventListener('click', function() {
       navigator.clipboard.writeText(result).then(function() {
         copyBtn.textContent = '✓ Copied';
-        setTimeout(function() { copyBtn.textContent = '📋 Copy'; }, 1500);
+        setTimeout(function() { copyBtn.textContent = 'Copy'; }, 1500);
       });
     });
 
@@ -3653,7 +3666,7 @@ function renderTaskAIActions(task, detailEl) {
       body: JSON.stringify({ action: 'custom', custom_prompt: prompt })
     }).then(function(r) { return r.json(); }).then(function(data) {
       askBtn.disabled = false;
-      askBtn.textContent = '💬 Ask';
+      askBtn.textContent = 'Ask';
       if (data.error || !data.result) {
         outputDiv.textContent = '';
         var errMsg = document.createElement('p');
@@ -3662,10 +3675,10 @@ function renderTaskAIActions(task, detailEl) {
         outputDiv.appendChild(errMsg);
         return;
       }
-      renderAIResult(data.result, '💬 Custom', runCustomAsk);
+      renderAIResult(data.result, 'Custom', runCustomAsk);
     }).catch(function() {
       askBtn.disabled = false;
-      askBtn.textContent = '💬 Ask';
+      askBtn.textContent = 'Ask';
       var errMsg = document.createElement('p');
       errMsg.style.cssText = 'font-size:11px;color:var(--danger);padding:6px 0';
       errMsg.textContent = 'AI unavailable, please try again.';
@@ -3718,6 +3731,11 @@ function renderKBPage() {
       uploadBtn.disabled = false;
       uploadBtn.textContent = '+ Upload Doc';
       renderKBPage();
+    }).catch(function() {
+      fileInput.value = '';
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = '+ Upload Doc';
+      showToast('Upload failed. Please try again.');
     });
   });
   uploadBtn.addEventListener('click', function() { fileInput.click(); });
@@ -3810,7 +3828,8 @@ function buildKBDocCard(doc) {
   del.textContent = '✕';
   del.addEventListener('click', function() {
     fetch('/api/kb/' + doc.id, { method: 'DELETE', headers: authHeaders() })
-      .then(function() { renderKBPage(); });
+      .then(function() { renderKBPage(); })
+      .catch(function() { showToast('Delete failed.'); });
   });
   card.appendChild(del);
   return card;
