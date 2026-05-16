@@ -209,4 +209,5 @@ def test_completed_at_cleared_when_status_not_done(admin_headers):
     task_id = r.json()["id"]
     client.put(f"/api/tasks/{task_id}", json={"status_id": 3}, headers=headers)
     r2 = client.put(f"/api/tasks/{task_id}", json={"status_id": 1}, headers=headers)
+    assert r2.status_code == 200
     assert r2.json()["completed_at"] is None
