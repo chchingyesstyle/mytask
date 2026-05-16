@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --bg-base:  oklch(13% 0.009 65);
   --bg-panel: oklch(17% 0.009 65);
   --bg-card:  oklch(21% 0.011 65);
@@ -16,6 +17,7 @@
 }
 
 body.light {
+  color-scheme: light;
   --bg-base:  oklch(95%   0.018 80);
   --bg-panel: oklch(92%   0.018 78);
   --bg-card:  oklch(99%   0.008 82);
@@ -54,9 +56,11 @@ body {
 /* ── Shared inputs / buttons ── */
 input, select, textarea {
   background: var(--bg-input); border: 1px solid var(--border); color: var(--text);
+  -webkit-text-fill-color: var(--text);
   padding: 8px 12px; border-radius: var(--r); font-size: 13px; outline: none;
   transition: border-color .15s;
 }
+::placeholder { color: var(--text-dim); -webkit-text-fill-color: var(--text-dim); opacity: 1; }
 input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px;
