@@ -18,14 +18,14 @@
 
 body.light {
   color-scheme: light;
-  --bg-base:  oklch(95%   0.018 80);
-  --bg-panel: oklch(92%   0.018 78);
-  --bg-card:  oklch(99%   0.008 82);
-  --bg-input: oklch(100%  0.005 80);
-  --border:   oklch(84%   0.014 78);
-  --text:     oklch(18%   0.015 60);
-  --text-dim: oklch(43%   0.012 65);
-  --accent:   oklch(45%   0.19  228);
+  --bg-base:  oklch(93%   0.010 252);
+  --bg-panel: oklch(90%   0.012 252);
+  --bg-card:  oklch(98%   0.005 248);
+  --bg-input: oklch(100%  0.003 248);
+  --border:   oklch(82%   0.016 252);
+  --text:     oklch(16%   0.008 255);
+  --text-dim: oklch(45%   0.010 252);
+  --accent:   oklch(44%   0.19  228);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
