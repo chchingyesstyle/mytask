@@ -348,6 +348,82 @@ button.btn-secondary { background: var(--border); }
 }
 .briefing-icon { flex-shrink: 0; }
 
+/* ── Dashboard: task lists ─────────────────────────────── */
+.dash-task-list { margin-bottom: 20px; }
+.dash-task-list-title {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-dim); margin-bottom: 8px;
+}
+.dash-task-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: 6px; cursor: pointer;
+  background: var(--bg-card); border: 1px solid var(--border);
+  margin-bottom: 5px; font-size: 13px;
+}
+.dash-task-item:hover { border-color: var(--accent); }
+.dash-task-title { flex: 1; }
+.dash-task-project { font-size: 11px; color: var(--text-dim); }
+.dash-task-due { font-size: 11px; color: var(--danger); }
+.dash-priority-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.dash-priority-dot.high   { background: var(--danger); }
+.dash-priority-dot.medium { background: var(--warning); }
+.dash-priority-dot.low    { background: var(--success); }
+
+/* ── Dashboard: project progress ──────────────────────── */
+.dash-section-title {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-dim); margin-bottom: 10px;
+}
+.dash-project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px; margin-bottom: 20px;
+}
+.dash-project-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 14px; cursor: pointer;
+}
+.dash-project-card:hover { border-color: var(--accent); }
+.dash-project-name { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+.dash-project-counts { font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
+.dash-progress-track {
+  height: 5px; border-radius: 3px; background: var(--border); overflow: hidden;
+}
+.dash-progress-fill {
+  height: 100%; border-radius: 3px; background: var(--success); transition: width .3s;
+}
+
+/* ── Dashboard: bottom row ────────────────────────────── */
+.dashboard-bottom-row { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+.dashboard-bottom-row > div { flex: 1; min-width: 220px; }
+
+/* ── Dashboard: sparkline ─────────────────────────────── */
+.dash-sparkline {
+  display: flex; align-items: flex-end; gap: 5px;
+  height: 60px; margin: 8px 0 4px;
+}
+.dash-spark-bar-wrap {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.dash-spark-bar {
+  width: 100%; border-radius: 3px 3px 0 0; background: var(--accent); min-height: 3px;
+}
+.dash-spark-label { font-size: 10px; color: var(--text-dim); }
+.dash-sparkline-total { font-size: 11px; color: var(--text-dim); }
+
+/* ── Dashboard: activity feed ─────────────────────────── */
+.dash-activity-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: 6px; cursor: pointer;
+  background: var(--bg-card); border: 1px solid var(--border);
+  margin-bottom: 5px; font-size: 13px;
+}
+.dash-activity-item:hover { border-color: var(--accent); }
+.dash-activity-title-text { flex: 1; }
+.dash-activity-time { font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+
 /* ── Tag pills ── */
 .tag-pills { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; align-items: center; }
 .tag-pill { font-size: 9px; padding: 1px 7px; border-radius: 8px; border: 1px solid transparent; }
