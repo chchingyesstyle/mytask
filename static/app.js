@@ -804,7 +804,7 @@ function renderTasks() {
 
   if (tasks.length === 0) {
     var p = document.createElement('p');
-    p.style.cssText = 'color:var(--text-dim);font-size:13px;padding:12px';
+    p.className = 'task-list-empty';
     p.textContent = 'No tasks here. Tell the AI to create one!';
     container.appendChild(p);
     return;
@@ -3476,6 +3476,9 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
   document.getElementById('task-modal').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
+  });
+  document.getElementById('mt-title').addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
   });
   document.getElementById('filter-all').addEventListener('click', function() { setFilter('all', this); });
   document.getElementById('filter-today').addEventListener('click', function() { setFilter('today', this); });

@@ -60,7 +60,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px;
 }
 button {
-  background: var(--accent); color: #fff; border: none;
+  background: var(--accent); color: oklch(99% 0.003 75); border: none;
   padding: 8px 16px; border-radius: var(--r); font-size: 13px;
   font-weight: 500; cursor: pointer; transition: opacity .15s;
 }
@@ -117,7 +117,7 @@ button.btn-secondary { background: var(--border); }
   color: var(--text-dim); font-size: 11px; padding: 5px 8px; width: 100%;
 }
 .overdue-badge {
-  background: var(--danger); color: #fff;
+  background: var(--danger); color: oklch(99% 0.003 75);
   font-size: 10px; padding: 1px 5px; border-radius: 8px; flex-shrink: 0;
 }
 
@@ -238,7 +238,7 @@ button.btn-secondary { background: var(--border); }
 .chat-fab {
   position: fixed; bottom: 20px; right: 20px;
   width: 42px; height: 42px; border-radius: 50%;
-  background: var(--accent); color: #fff; font-size: 18px; border: none;
+  background: var(--accent); color: oklch(99% 0.003 75); font-size: 18px; border: none;
   cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,.4);
   z-index: 200; display: flex; align-items: center; justify-content: center;
   padding: 0; transition: transform .15s;
@@ -606,7 +606,7 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
 .cal-cell.today .cal-date { color: var(--accent); }
 .cal-task-pill {
   font-size: 9px; padding: 1px 5px; border-radius: 3px;
-  color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: oklch(99% 0.003 75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   cursor: pointer;
 }
 .cal-task-pill.priority-high   { background: var(--danger); }
@@ -641,7 +641,7 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
   position: absolute; top: 4px; height: 20px; border-radius: 3px;
   cursor: ew-resize; transition: opacity .15s; min-width: 8px;
   display: flex; align-items: center; padding: 0 4px;
-  font-size: 9px; color: rgba(255,255,255,.8);
+  font-size: 9px; color: oklch(99% 0.003 75 / 0.85);
   user-select: none; white-space: nowrap; overflow: hidden;
 }
 .gantt-bar:hover { opacity: .85; }
@@ -652,6 +652,7 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
   border-top: 1px dashed var(--border); margin: 8px 0;
   color: var(--text-dim); font-size: 10px; padding-top: 4px;
 }
+.task-list-empty { color: var(--text-dim); font-size: 13px; padding: 24px 16px; text-align: center; }
 .tl-empty { color: var(--text-dim); font-size: 12px; padding: 24px; text-align: center; }
 
 /* ── Projects page ── */
@@ -729,6 +730,9 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
 .task-table tbody tr { border-bottom:1px solid var(--border); }
 .task-table tbody tr:hover { background:rgba(255,255,255,.02); }
 body.light .task-table tbody tr:hover { background:rgba(0,0,0,.02); }
+body.light .proj-card-header:hover { background: rgba(0,0,0,.03); }
+body.light .proj-status-row { border-bottom-color: rgba(0,0,0,.06); }
+body.light .tag-row:hover { background: rgba(0,0,0,.02); }
 .task-table td { padding:6px 10px; vertical-align:middle; color:var(--text); }
 .table-row-sub td { background:oklch(70% 0.13 72 / 0.03); color:var(--text-dim); font-size:11px; }
 .col-expand { width:24px; text-align:center; cursor:pointer; color:var(--text-dim); font-size:10px; }
@@ -762,7 +766,7 @@ body.light .task-table tbody tr:hover { background:rgba(0,0,0,.02); }
 .kb-doc-download:hover { color:var(--accent); }
 .kb-doc-delete { background:none; border:none; color:var(--text-dim); cursor:pointer;
   font-size:12px; padding:2px 4px; }
-.kb-doc-delete:hover { color:#ef4444; }
+.kb-doc-delete:hover { color: var(--danger); }
 .kb-upload-btn { display:flex; align-items:center; gap:6px; }
 
 /* Task card doc section */
@@ -774,7 +778,7 @@ body.light .task-table tbody tr:hover { background:rgba(0,0,0,.02); }
   padding:2px 8px; font-size:11px; color:var(--text); display:inline-flex; align-items:center; gap:4px; }
 .task-doc-pill-del { color:var(--text-dim); cursor:pointer; background:none; border:none;
   font-size:10px; padding:0; line-height:1; }
-.task-doc-pill-del:hover { color:#ef4444; }
+.task-doc-pill-del:hover { color: var(--danger); }
 .task-attach-btn { background:none; border:1px dashed var(--border); border-radius:var(--r);
   padding:2px 8px; font-size:11px; color:var(--text-dim); cursor:pointer; }
 .task-attach-btn:hover { border-color:var(--accent); color:var(--accent); }
