@@ -435,7 +435,52 @@ function renderDashTaskLists(data) {
   makeList(data.today_tasks, 'Due Today', function() { return 'today'; });
 }
 
-function renderDashProjects(data) {}
+function renderDashProjects(data) {
+  var container = document.getElementById('dashboard-projects');
+  if (!container) return;
+  _clearEl(container);
+  if (!data.projects || data.projects.length === 0) return;
+
+  var title = document.createElement('div');
+  title.className = 'dash-section-title';
+  title.textContent = 'Project Progress';
+  container.appendChild(title);
+
+  var grid = document.createElement('div');
+  grid.className = 'dash-project-grid';
+
+  data.projects.forEach(function(proj) {
+    var card = document.createElement('div');
+    card.className = 'dash-project-card';
+
+    var name = document.createElement('div');
+    name.className = 'dash-project-name';
+    name.textContent = proj.name;
+    card.appendChild(name);
+
+    var counts = document.createElement('div');
+    counts.className = 'dash-project-counts';
+    counts.textContent = proj.done + ' / ' + proj.total + ' done';
+    card.appendChild(counts);
+
+    var track = document.createElement('div');
+    track.className = 'dash-progress-track';
+    var fill = document.createElement('div');
+    fill.className = 'dash-progress-fill';
+    fill.style.width = (proj.total > 0 ? Math.round((proj.done / proj.total) * 100) : 0) + '%';
+    track.appendChild(fill);
+    card.appendChild(track);
+
+    card.addEventListener('click', function() {
+      navigateTo('tasks');
+      var btn = document.querySelector('[data-project-id="' + proj.id + '"]');
+      if (btn) btn.click();
+    });
+
+    grid.appendChild(card);
+  });
+  container.appendChild(grid);
+}
 function renderDashSparkline(data) {}
 function renderDashActivity(data) {}
 
