@@ -894,12 +894,10 @@ function buildTaskCard(t) {
   actions.appendChild(delBtn);
   detail.appendChild(actions);
 
-  if (t.notes) {
-    var notesEl = document.createElement('div');
-    notesEl.className = 'task-notes';
-    notesEl.textContent = t.notes;
-    detail.appendChild(notesEl);
-  }
+  var notesContainer = document.createElement('div');
+  notesContainer.className = 'task-notes-container';
+  renderNotesDisplay(t.notes, notesContainer);
+  detail.appendChild(notesContainer);
 
   // Tag picker
   if (allTags.length > 0) {
@@ -2292,8 +2290,7 @@ function showTaskEditForm(t, detail) {
     priSel.appendChild(opt);
   });
 
-  var notesArea = document.createElement('textarea');
-  notesArea.value = t.notes || '';
+  var notesToggle = buildNotesToggle(t.notes);
 
   var projSel = document.createElement('select');
   var noProj = document.createElement('option');
@@ -2321,7 +2318,7 @@ function showTaskEditForm(t, detail) {
   form.appendChild(field('Title', titleInp));
   form.appendChild(dateRow);
   form.appendChild(row2);
-  form.appendChild(field('Notes', notesArea));
+  form.appendChild(field('Notes', notesToggle.el));
 
   var actionsDiv = document.createElement('div');
   actionsDiv.className = 'edit-actions';
@@ -2354,7 +2351,7 @@ function showTaskEditForm(t, detail) {
       due_date: dateInp.value || null,
       priority: priSel.value,
       project_id: projSel.value ? parseInt(projSel.value) : null,
-      notes: notesArea.value.trim() || null,
+      notes: notesToggle.getValue().trim() || null,
     });
   });
 
