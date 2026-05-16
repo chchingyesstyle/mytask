@@ -114,11 +114,11 @@
 
         <!-- View switcher -->
         <div class="view-switcher" id="view-switcher">
-          <button class="view-tab active" data-view="list">≡ List</button>
-          <button class="view-tab" data-view="board" id="view-tab-board">⊞ Board</button>
-          <button class="view-tab" data-view="calendar">📅 Calendar</button>
-          <button class="view-tab" data-view="timeline">⟶ Timeline</button>
-          <button class="view-tab" data-view="table">&#8862; Table</button>
+          <button class="view-tab active" data-view="list" title="List: tasks grouped by status">≡ List</button>
+          <button class="view-tab" data-view="board" id="view-tab-board" title="Board: drag cards between status columns">⊞ Board</button>
+          <button class="view-tab" data-view="calendar" title="Calendar: tasks span their start → due range">📅 Calendar</button>
+          <button class="view-tab" data-view="timeline" title="Timeline: Gantt bars; drag to shift dates">⟶ Timeline</button>
+          <button class="view-tab" data-view="table" title="Table: spreadsheet view with sortable columns">&#8862; Table</button>
         </div>
 
         <!-- Filter bar (shared across all views) -->
@@ -203,6 +203,7 @@
               <span id="briefing-text"></span>
             </div>
           </div>
+          <div id="onboarding-tip" style="display:none"></div>
           <div id="dashboard-task-lists"></div>
           <div id="dashboard-projects"></div>
           <div class="dashboard-bottom-row">

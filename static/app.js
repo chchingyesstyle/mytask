@@ -400,6 +400,44 @@ async function loadTasks() {
   }
 }
 
+function renderOnboardingTip() {
+  var tip = document.getElementById('onboarding-tip');
+  if (!tip) return;
+  if (localStorage.getItem('mytask-tip-seen') || allTasks.length > 0) {
+    tip.style.display = 'none';
+    return;
+  }
+  if (tip.dataset.built) { tip.style.display = ''; return; }
+  tip.dataset.built = '1';
+
+  tip.className = 'onboarding-tip';
+
+  var text = document.createElement('div');
+  text.className = 'onboarding-tip-text';
+
+  var kbd = document.createElement('kbd');
+  kbd.textContent = 'N';
+  var line1 = document.createTextNode(' = new task. AI chat (');
+  var arrow = document.createTextNode('↘');
+  var line2 = document.createTextNode(') can create and update tasks by description. Projects unlock Board view and custom statuses.');
+  text.appendChild(kbd);
+  text.appendChild(line1);
+  text.appendChild(arrow);
+  text.appendChild(line2);
+
+  var dismiss = document.createElement('button');
+  dismiss.className = 'onboarding-tip-dismiss';
+  dismiss.textContent = 'Got it';
+  dismiss.addEventListener('click', function() {
+    localStorage.setItem('mytask-tip-seen', '1');
+    tip.style.display = 'none';
+  });
+
+  tip.appendChild(text);
+  tip.appendChild(dismiss);
+  tip.style.display = 'flex';
+}
+
 // Dashboard
 async function loadDashboard() {
   try {
@@ -425,6 +463,7 @@ async function loadDashboard() {
       }
     }
 
+    renderOnboardingTip();
     if (currentPage !== 'dashboard') return;
     renderDashTaskLists(data);
     renderDashProjects(data);
@@ -2522,6 +2561,7 @@ async function createTask() {
     if (mtErr2) { mtErr2.textContent = errMsg; mtErr2.style.display = 'block'; }
     return;
   }
+  localStorage.setItem('mytask-tip-seen', '1');
   closeModal();
   await loadTasks();
 }
@@ -2653,7 +2693,17 @@ function _renderProjectsList() {
   if (allProjects.length === 0) {
     var empty = document.createElement('div');
     empty.className = 'proj-empty';
-    empty.textContent = 'No projects yet. Create one to get started.';
+    var emptyTitle = document.createElement('p');
+    emptyTitle.textContent = 'No projects yet.';
+    var emptyDesc = document.createElement('p');
+    emptyDesc.className = 'proj-empty-desc';
+    emptyDesc.textContent = 'Projects group tasks and give each one a board with custom status columns.';
+    var emptyBtn = document.createElement('button');
+    emptyBtn.textContent = '+ Create your first project';
+    emptyBtn.addEventListener('click', function() { showNewProjectForm(list); });
+    empty.appendChild(emptyTitle);
+    empty.appendChild(emptyDesc);
+    empty.appendChild(emptyBtn);
     list.appendChild(empty);
   } else {
     allProjects.forEach(function(p) {
@@ -3069,7 +3119,23 @@ function renderTagsPage() {
   if (allTags.length === 0) {
     var empty = document.createElement('div');
     empty.className = 'tag-empty';
-    empty.textContent = 'No tags yet. Create one to get started.';
+    var emptyTitle = document.createElement('p');
+    emptyTitle.textContent = 'No tags yet.';
+    var emptyDesc = document.createElement('p');
+    emptyDesc.className = 'tag-empty-desc';
+    emptyDesc.textContent = 'Tags cross-cut projects; filter any view by tag.';
+    var emptyBtn = document.createElement('button');
+    emptyBtn.textContent = '+ Create your first tag';
+    emptyBtn.addEventListener('click', function() {
+      var existing = document.getElementById('new-tag-page-form');
+      if (existing) { existing.remove(); return; }
+      var form = buildTagCreateForm(list);
+      list.insertBefore(form, list.firstChild);
+      form.querySelector('input[type="text"]').focus();
+    });
+    empty.appendChild(emptyTitle);
+    empty.appendChild(emptyDesc);
+    empty.appendChild(emptyBtn);
     list.appendChild(empty);
   } else {
     allTags.forEach(function(tag) {
@@ -3599,9 +3665,19 @@ function renderKBPage() {
       container.appendChild(glTitle);
 
       if (!globalDocs.length) {
-        var empty = document.createElement('p');
-        empty.style.cssText = 'font-size:12px;color:var(--text-dim);padding:8px 4px';
-        empty.textContent = 'No global documents yet. Upload docs to give the AI context for all tasks.';
+        var empty = document.createElement('div');
+        empty.className = 'kb-drop-hint';
+        var emptyIcon = document.createElement('div');
+        emptyIcon.className = 'kb-drop-icon';
+        emptyIcon.textContent = '↑';
+        var emptyMain = document.createElement('div');
+        emptyMain.textContent = 'No global documents yet.';
+        var emptySub = document.createElement('div');
+        emptySub.className = 'kb-drop-sub';
+        emptySub.textContent = 'Upload PDFs, DOCX, images, or text files. The AI will reference them across all tasks.';
+        empty.appendChild(emptyIcon);
+        empty.appendChild(emptyMain);
+        empty.appendChild(emptySub);
         container.appendChild(empty);
       }
       globalDocs.forEach(function(doc) { container.appendChild(buildKBDocCard(doc)); });
