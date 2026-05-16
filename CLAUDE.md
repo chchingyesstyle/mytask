@@ -130,6 +130,9 @@ docker cp static/index.html mytask-mytask-1:/app/static/index.html
 - iOS Safari changes viewport height as the address bar shows/hides — never rely on items pinned to the bottom of a flex container being visible; put them *inside* the scroll container with a `flex:1` `.drawer-spacer` div above them
 - Use `height: 100vh; height: 100dvh` (both declarations) for full-height fixed elements on iOS
 - Add `-webkit-overflow-scrolling: touch` to any scrollable container for iOS momentum scrolling
+- iOS Safari ignores `color` on `input`/`select`/`textarea` — use `-webkit-text-fill-color: var(--text)` instead; `::placeholder` also needs `-webkit-text-fill-color: var(--text-dim)` and `opacity: 1` (Firefox strips opacity by default)
+- Declare `color-scheme: dark` on `:root` and `color-scheme: light` on `body.light` — without it, OS-level input styling overrides your theme colors on iOS
+- Use `:not(:empty)` to avoid phantom margins on conditionally-populated containers: `.task-notes-container:not(:empty) { margin-top: 8px; }` — plain `margin-top` on the container adds space even when empty
 - `TABLE_COLS`, `tableSort`, `tableExpanded`, `tableHiddenCols` (localStorage) — table view state vars
 - `renderTable()`, `buildTableRow()`, `buildSubtaskRow()`, `openTableCellEdit()` — table view; wired via `renderCurrentView()`
 - `renderKBPage()`, `buildKBDocCard()` — KB sidebar page (label: "Knowledge"); register in `navigateTo()` and add click listeners in `DOMContentLoaded`
