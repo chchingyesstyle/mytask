@@ -123,19 +123,19 @@
 
         <!-- Filter bar (shared across all views) -->
         <div class="filter-bar" id="filter-bar">
-          <button class="filter-btn active" id="filter-all">All</button>
-          <button class="filter-btn" id="filter-today">Today</button>
-          <button class="filter-btn" id="filter-overdue">Overdue</button>
-          <span id="project-filters"></span>
-          <span id="tag-filters"></span>
+          <div class="filter-left">
+            <button class="filter-btn active" id="filter-all">All</button>
+            <button class="filter-btn" id="filter-today">Today</button>
+            <button class="filter-btn" id="filter-overdue">Overdue</button>
+            <span id="project-filters"></span>
+            <span id="tag-filters"></span>
+          </div>
+          <button class="new-task-btn" id="new-task-btn">+ New Task</button>
         </div>
 
         <!-- List view -->
         <div id="view-list" class="view-container">
           <div id="task-list" class="task-list"></div>
-          <div class="task-panel-footer">
-            <button class="new-task-btn" id="new-task-btn">+ New Task</button>
-          </div>
         </div>
 
         <!-- Board view -->
