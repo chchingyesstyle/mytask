@@ -352,24 +352,89 @@ async function loadDashboard() {
     var resp = await fetch('/api/dashboard', { headers: authHeaders() });
     if (!resp.ok) return;
     var data = await resp.json();
+
     var strip = document.getElementById('dashboard-strip');
-    if (data.overdue === 0 && data.due_today === 0 && data.due_week === 0) {
-      strip.style.display = 'none';
-      return;
+    if (strip) {
+      strip.style.display = 'block';
+      document.getElementById('stat-overdue-num').textContent = data.overdue;
+      document.getElementById('stat-today-num').textContent = data.due_today;
+      document.getElementById('stat-week-num').textContent = data.due_week;
+      var briefingEl = document.getElementById('dashboard-briefing');
+      if (briefingEl) {
+        if (data.ai_briefing) {
+          document.getElementById('briefing-text').textContent = data.ai_briefing;
+          briefingEl.style.display = 'flex';
+        } else {
+          briefingEl.style.display = 'none';
+        }
+      }
     }
-    strip.style.display = 'block';
-    document.getElementById('stat-overdue-num').textContent = data.overdue;
-    document.getElementById('stat-today-num').textContent = data.due_today;
-    document.getElementById('stat-week-num').textContent = data.due_week;
-    var briefingEl = document.getElementById('dashboard-briefing');
-    if (data.ai_briefing) {
-      document.getElementById('briefing-text').textContent = data.ai_briefing;
-      briefingEl.style.display = 'flex';
-    } else {
-      briefingEl.style.display = 'none';
-    }
+
+    if (currentPage !== 'dashboard') return;
+    renderDashTaskLists(data);
+    renderDashProjects(data);
+    renderDashSparkline(data);
+    renderDashActivity(data);
   } catch (e) { console.warn('Dashboard load failed:', e); }
 }
+
+function _clearEl(el) {
+  while (el.firstChild) el.removeChild(el.firstChild);
+}
+
+function renderDashTaskLists(data) {
+  var container = document.getElementById('dashboard-task-lists');
+  if (!container) return;
+  _clearEl(container);
+
+  function makeList(tasks, title, dueLabelFn) {
+    if (!tasks || tasks.length === 0) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'dash-task-list';
+    var h = document.createElement('div');
+    h.className = 'dash-section-title';
+    h.textContent = title + ' (' + tasks.length + ')';
+    wrap.appendChild(h);
+    tasks.forEach(function(t) {
+      var row = document.createElement('div');
+      row.className = 'dash-task-item';
+      var dot = document.createElement('span');
+      dot.className = 'dash-priority-dot ' + (t.priority || 'medium');
+      row.appendChild(dot);
+      var titleEl = document.createElement('span');
+      titleEl.className = 'dash-task-title';
+      titleEl.textContent = t.title;
+      row.appendChild(titleEl);
+      if (t.project_name) {
+        var proj = document.createElement('span');
+        proj.className = 'dash-task-project';
+        proj.textContent = t.project_name;
+        row.appendChild(proj);
+      }
+      if (t.due_date) {
+        var due = document.createElement('span');
+        due.className = 'dash-task-due';
+        due.textContent = dueLabelFn(t.due_date);
+        row.appendChild(due);
+      }
+      row.addEventListener('click', function() { navigateTo('tasks'); });
+      wrap.appendChild(row);
+    });
+    container.appendChild(wrap);
+  }
+
+  function overdueLabel(d) {
+    var days = Math.round((new Date() - new Date(d + 'T00:00:00')) / 86400000);
+    return days === 1 ? '1 day overdue' : days + ' days overdue';
+  }
+
+  makeList(data.overdue_tasks, 'Overdue', overdueLabel);
+  makeList(data.today_tasks, 'Due Today', function() { return 'today'; });
+}
+
+function renderDashProjects(data) {}
+function renderDashSparkline(data) {}
+function renderDashActivity(data) {}
 
 // Filters
 function setFilter(filter, btn) {
