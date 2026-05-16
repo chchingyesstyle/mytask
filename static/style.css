@@ -437,6 +437,9 @@ button.btn-secondary { background: var(--border); }
 .tag-pills { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; align-items: center; }
 .tag-pill { font-size: 9px; padding: 1px 7px; border-radius: 8px; border: 1px solid transparent; }
 
+/* ── Status pill ── */
+.status-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 1px 8px; border-radius: 8px; border: 1px solid transparent; white-space: nowrap; }
+
 /* ── Subtask rows ── */
 .subtask-indicator { color: var(--text-dim); font-size: 10px; }
 .subtask-section { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
@@ -687,8 +690,8 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
 .proj-card-chevron { font-size: 11px; color: var(--text-dim); width: 14px; text-align: center; }
 .proj-card-view-tasks { background: none; border: 1px solid var(--border); color: var(--text-dim); font-size: 11px; padding: 2px 7px; line-height: 1; cursor: pointer; border-radius: var(--r); white-space: nowrap; }
 .proj-card-view-tasks:hover { color: var(--accent); border-color: var(--accent); }
-.proj-card-del { background: none; border: none; color: var(--text-dim); font-size: 13px; padding: 2px 6px; line-height: 1; cursor: pointer; border-radius: var(--r); }
-.proj-card-del:hover { color: var(--danger); opacity: 1; }
+.proj-card-del { background: none; border: none; color: var(--danger); opacity: 0.5; font-size: 13px; padding: 2px 6px; line-height: 1; cursor: pointer; border-radius: var(--r); }
+.proj-card-del:hover { opacity: 1; }
 .proj-status-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 10px; }
 .proj-status-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-dim); }
 .proj-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }

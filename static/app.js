@@ -352,7 +352,7 @@ function renderTagFilters() {
       });
       if (resp.ok) { await loadTags(); } else {
         var err = await resp.json().catch(function() { return {}; });
-        alert(err.detail || 'Failed to create tag');
+        showToast(err.detail || 'Failed to create tag');
       }
     }
     saveBtn.addEventListener('click', doCreate);
@@ -550,7 +550,7 @@ function renderDashSparkline(data) {
   var chart = document.createElement('div');
   chart.className = 'dash-sparkline';
   var maxVal = Math.max.apply(null, data.completed_7d) || 1;
-  var dayLabels = ['6d', '5d', '4d', '3d', '2d', 'Ytd', 'Today'];
+  var dayLabels = ['6d', '5d', '4d', '3d', '2d', 'Yest', 'Today'];
   data.completed_7d.forEach(function(count, i) {
     var wrap = document.createElement('div');
     wrap.className = 'dash-spark-bar-wrap';
@@ -1212,12 +1212,19 @@ function renderBoard() {
       col.classList.remove('drag-over');
       var taskId = parseInt(e.dataTransfer.getData('text/plain'));
       if (taskId) {
+        var prevStatusId = (allTasks.find(function(tt) { return tt.id === taskId; }) || {}).status_id;
         fetch('/api/tasks/' + taskId, {
           method: 'PUT', headers: authHeaders(),
           body: JSON.stringify({ status_id: status.id }),
         }).then(function(r) {
-          if (!r.ok) alert('Failed to move task. Please try again.');
-          loadTasks();
+          if (!r.ok) { showToast('Failed to move task. Please try again.'); return loadTasks(); }
+          loadTasks().then(function() {
+            if (prevStatusId && prevStatusId !== status.id) {
+              showToast('Moved to ' + status.name, 'Undo', function() {
+                fetch('/api/tasks/' + taskId, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ status_id: prevStatusId }) }).then(function() { loadTasks(); });
+              });
+            }
+          });
         }).catch(function() { loadTasks(); });
       }
     });
@@ -1905,11 +1912,17 @@ function buildBoardCard(t) {
   card.className = 'board-card priority-' + t.priority;
   card.draggable = true;
   card.dataset.taskId = t.id;
+  card.style.cursor = 'pointer';
   card.addEventListener('dragstart', function(e) {
     e.dataTransfer.setData('text/plain', t.id);
     card.classList.add('dragging');
   });
   card.addEventListener('dragend', function() { card.classList.remove('dragging'); });
+  card.addEventListener('click', function(e) {
+    if (card.classList.contains('dragging')) return;
+    expandedTaskId = t.id;
+    navigateTo('tasks');
+  });
   var title = document.createElement('div');
   title.className = 'board-card-title';
   title.textContent = t.title;
@@ -1973,7 +1986,7 @@ function showAddStatusForm(container, triggerBtn) {
     });
     if (!resp.ok) {
       var err = await resp.json().catch(function() { return {}; });
-      alert(err.detail || 'Failed to create status');
+      showToast(err.detail || 'Failed to create status');
       return;
     }
     await loadStatuses(pid);
@@ -1998,11 +2011,19 @@ function toggleTask(id) {
 }
 
 async function updateTaskStatus(id, statusId) {
+  var task = allTasks.find(function(t) { return t.id === id; });
+  var prevStatusId = task ? task.status_id : null;
   await fetch('/api/tasks/' + id, {
     method: 'PUT', headers: authHeaders(),
     body: JSON.stringify({ status_id: statusId }),
   });
   await loadTasks();
+  if (prevStatusId && prevStatusId !== statusId) {
+    showToast('Status changed', 'Undo', async function() {
+      await fetch('/api/tasks/' + id, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ status_id: prevStatusId }) });
+      await loadTasks();
+    });
+  }
 }
 
 function deleteTask(id) {
@@ -2127,9 +2148,14 @@ function showTaskEditForm(t, detail) {
     if (e.key === 'Escape') { e.stopPropagation(); hideTaskEditForm(t.id); }
   });
 
+  var editErrEl = document.createElement('div');
+  editErrEl.className = 'task-edit-err';
+  editErrEl.style.cssText = 'display:none;color:var(--danger);font-size:11px;margin-top:4px';
+
   actionsDiv.appendChild(cancelBtn);
   actionsDiv.appendChild(saveBtn);
   form.appendChild(actionsDiv);
+  form.appendChild(editErrEl);
 
   detail.appendChild(form);
   titleInp.focus();
@@ -2143,14 +2169,22 @@ function hideTaskEditForm(taskId) {
 }
 
 async function saveTaskEdit(taskId, data) {
+  var errEl = document.querySelector('#task-edit-form-' + taskId + ' .task-edit-err');
+  if (errEl) { errEl.style.display = 'none'; }
   var resp = await fetch('/api/tasks/' + taskId, {
     method: 'PUT',
     headers: authHeaders(),
     body: JSON.stringify(data),
   });
-  if (!resp.ok) { console.warn('Save task edit failed:', resp.status); return; }
+  if (!resp.ok) {
+    var msg = 'Save failed. Please try again.';
+    try { var e = await resp.json(); if (e.detail) msg = e.detail; } catch(ex) {}
+    if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+    return;
+  }
   editingTaskId = null;
   await loadTasks();
+  showToast('Saved');
 }
 
 function updateOverdueBadge() {
@@ -2238,6 +2272,12 @@ function findStatusId(name) {
 }
 
 async function toggleSubtask(id, isDone, parentId, container) {
+  var prevTask = null;
+  for (var _i = 0; _i < allTasks.length; _i++) {
+    var _ch = (allTasks[_i].children || []).find(function(c) { return c.id === id; });
+    if (_ch) { prevTask = _ch; break; }
+  }
+  var prevStatusId = prevTask ? prevTask.status_id : null;
   var statusId = isDone ? findStatusId('Done') : findStatusId('Todo');
   if (!statusId) return;
   await fetch('/api/tasks/' + id, {
@@ -2245,6 +2285,13 @@ async function toggleSubtask(id, isDone, parentId, container) {
   });
   await loadAndRenderSubtasks(parentId, container);
   await loadTasks();
+  if (prevStatusId && prevStatusId !== statusId) {
+    showToast('Status changed', 'Undo', async function() {
+      await fetch('/api/tasks/' + id, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ status_id: prevStatusId }) });
+      await loadAndRenderSubtasks(parentId, container);
+      await loadTasks();
+    });
+  }
 }
 
 function showAddStepInput(parentId, container, addRowEl) {
@@ -2365,12 +2412,25 @@ function showStepEditRow(child, originalRow, parentId, container) {
 }
 
 async function saveStepEdit(stepId, title, startDate, dueDate, notes, parentId, container, editRow, originalRow) {
+  var errEl = editRow.querySelector('.step-edit-err');
+  if (errEl) { errEl.style.display = 'none'; }
   var resp = await fetch('/api/tasks/' + stepId, {
     method: 'PUT',
     headers: authHeaders(),
     body: JSON.stringify({ title: title, start_date: startDate, due_date: dueDate, notes: notes }),
   });
-  if (!resp.ok) { console.warn('Save step edit failed:', resp.status); return; }
+  if (!resp.ok) {
+    var msg = 'Save failed. Please try again.';
+    try { var e = await resp.json(); if (e.detail) msg = e.detail; } catch(ex) {}
+    if (!errEl) {
+      errEl = document.createElement('div');
+      errEl.className = 'step-edit-err';
+      errEl.style.cssText = 'color:var(--danger);font-size:11px;margin-top:2px';
+      editRow.appendChild(errEl);
+    }
+    errEl.textContent = msg; errEl.style.display = 'block';
+    return;
+  }
   editingStepId = null;
   editRow.remove();
   originalRow.style.display = '';
@@ -2406,11 +2466,18 @@ function closeModal() {
   document.getElementById('mt-notes').value = '';
   document.getElementById('mt-start').value = '';
   document.getElementById('mt-due').value = '';
+  var mtErr = document.getElementById('mt-error');
+  if (mtErr) { mtErr.style.display = 'none'; }
 }
 
 async function createTask() {
   var title = document.getElementById('mt-title').value.trim();
-  if (!title) { alert('Title is required.'); return; }
+  var mtErr = document.getElementById('mt-error');
+  if (mtErr) { mtErr.style.display = 'none'; }
+  if (!title) {
+    if (mtErr) { mtErr.textContent = 'Title is required.'; mtErr.style.display = 'block'; }
+    return;
+  }
   var preselectStatusId = document.getElementById('task-modal').dataset.preselectStatusId;
   var body = {
     title: title,
@@ -2424,8 +2491,10 @@ async function createTask() {
   if (preselectStatusId) body.status_id = parseInt(preselectStatusId);
   var createResp = await fetch('/api/tasks', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
   if (!createResp.ok) {
-    var errData = await createResp.json();
-    alert(errData.detail || 'Error creating task.');
+    var errData = await createResp.json().catch(function() { return {}; });
+    var errMsg = errData.detail || 'Error creating task.';
+    var mtErr2 = document.getElementById('mt-error');
+    if (mtErr2) { mtErr2.textContent = errMsg; mtErr2.style.display = 'block'; }
     return;
   }
   closeModal();
@@ -2596,7 +2665,7 @@ function showNewProjectForm(list) {
       await loadProjects();
       _renderProjectsList();
     } else {
-      alert('Failed to create project');
+      showToast('Failed to create project');
     }
   }
   saveBtn.addEventListener('click', doCreate);
@@ -2713,7 +2782,7 @@ function buildProjectCard(p, list) {
         body: JSON.stringify({ name: name }),
       });
       if (resp.ok) { await loadProjects(); _renderProjectsList(); }
-      else { alert('Failed to rename project'); }
+      else { showToast('Failed to rename project'); }
     }
     saveRename.addEventListener('click', doRename);
     cancelRename.addEventListener('click', function() { expandedProjectId = null; _renderProjectsList(); });
@@ -2882,7 +2951,7 @@ function buildStatusEditRow(s, projectId, originalRow) {
       if (r2.ok) projectStatusMap[projectId] = await r2.json();
       _renderProjectsList();
     } else {
-      alert('Failed to update status');
+      showToast('Failed to update status');
     }
   }
   saveBtn.addEventListener('click', doSave);
@@ -2930,7 +2999,7 @@ function buildAddStatusForm(projectId, statusList) {
       _renderProjectsList();
     } else {
       var err = await resp.json().catch(function() { return {}; });
-      alert(err.detail || 'Failed to create status');
+      showToast(err.detail || 'Failed to create status');
     }
   }
   saveBtn.addEventListener('click', doCreate);
@@ -3065,7 +3134,7 @@ function buildTagEditRow(tag, list) {
     });
     if (resp.ok) { await loadTags(); renderTagsPage(); }
     else if (resp.status === 409) { errEl.textContent = 'Name already in use'; errEl.style.display = 'inline'; }
-    else { alert('Failed to update tag'); }
+    else { showToast('Failed to update tag'); }
   }
   saveBtn.addEventListener('click', doSave);
   cancelBtn.addEventListener('click', function() { row.remove(); });
@@ -3114,7 +3183,7 @@ function buildTagCreateForm(list) {
     });
     if (resp.ok) { await loadTags(); renderTagsPage(); }
     else if (resp.status === 409) { errEl.textContent = 'Name already in use'; errEl.style.display = 'inline'; }
-    else { alert('Failed to create tag'); }
+    else { showToast('Failed to create tag'); }
   }
   saveBtn.addEventListener('click', doCreate);
   cancelBtn.addEventListener('click', function() { form.remove(); });

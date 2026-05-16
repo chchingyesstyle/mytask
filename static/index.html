@@ -229,6 +229,7 @@
     <div class="modal-box">
       <h3>New Task</h3>
       <input id="mt-title" type="text" placeholder="Task title (required)">
+      <p id="mt-error" style="color:var(--danger);font-size:11px;margin:4px 0;display:none"></p>
       <select id="mt-priority">
         <option value="high">High Priority</option>
         <option value="medium" selected>Medium Priority</option>
@@ -284,7 +285,7 @@
         <label class="form-label">Confirm new password</label>
         <input type="password" id="cp-confirm" class="form-input" placeholder="Repeat new password">
       </div>
-      <p id="cp-error" style="color:#ef4444;font-size:11px;margin:4px 0 8px;display:none"></p>
+      <p id="cp-error" style="color:var(--danger);font-size:11px;margin:4px 0 8px;display:none"></p>
       <div class="modal-actions">
         <button id="cp-save-btn" class="btn-primary">Save</button>
         <button id="cp-cancel-btn" class="btn-secondary">Cancel</button>
