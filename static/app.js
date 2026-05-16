@@ -481,8 +481,87 @@ function renderDashProjects(data) {
   });
   container.appendChild(grid);
 }
-function renderDashSparkline(data) {}
-function renderDashActivity(data) {}
+function renderDashSparkline(data) {
+  var container = document.getElementById('dashboard-sparkline');
+  if (!container) return;
+  _clearEl(container);
+  if (!data.completed_7d) return;
+
+  var title = document.createElement('div');
+  title.className = 'dash-section-title';
+  title.textContent = 'Completed Last 7 Days';
+  container.appendChild(title);
+
+  var chart = document.createElement('div');
+  chart.className = 'dash-sparkline';
+  var maxVal = Math.max.apply(null, data.completed_7d) || 1;
+  var dayLabels = ['6d', '5d', '4d', '3d', '2d', 'Ytd', 'Today'];
+  data.completed_7d.forEach(function(count, i) {
+    var wrap = document.createElement('div');
+    wrap.className = 'dash-spark-bar-wrap';
+    var bar = document.createElement('div');
+    bar.className = 'dash-spark-bar';
+    bar.style.height = Math.round((count / maxVal) * 100) + '%';
+    bar.title = count + ' completed';
+    wrap.appendChild(bar);
+    var lbl = document.createElement('div');
+    lbl.className = 'dash-spark-label';
+    lbl.textContent = dayLabels[i];
+    wrap.appendChild(lbl);
+    chart.appendChild(wrap);
+  });
+  container.appendChild(chart);
+
+  var total = data.completed_7d.reduce(function(a, b) { return a + b; }, 0);
+  var tot = document.createElement('div');
+  tot.className = 'dash-sparkline-total';
+  tot.textContent = total + ' task' + (total !== 1 ? 's' : '') + ' completed this week';
+  container.appendChild(tot);
+}
+
+function renderDashActivity(data) {
+  var container = document.getElementById('dashboard-activity');
+  if (!container) return;
+  _clearEl(container);
+  if (!data.recent_activity || data.recent_activity.length === 0) return;
+
+  var title = document.createElement('div');
+  title.className = 'dash-section-title';
+  title.textContent = 'Recent Activity';
+  container.appendChild(title);
+
+  function relTime(iso) {
+    var diff = Date.now() - new Date(iso).getTime();
+    var mins = Math.floor(diff / 60000);
+    if (mins < 2) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    var hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    var days = Math.floor(hrs / 24);
+    return days === 1 ? 'yesterday' : days + 'd ago';
+  }
+
+  data.recent_activity.forEach(function(t) {
+    var row = document.createElement('div');
+    row.className = 'dash-activity-item';
+    var dot = document.createElement('span');
+    dot.className = 'dash-priority-dot ' + (t.priority || 'medium');
+    row.appendChild(dot);
+    var ttl = document.createElement('span');
+    ttl.className = 'dash-activity-title-text';
+    ttl.textContent = t.title;
+    row.appendChild(ttl);
+    var time = document.createElement('span');
+    time.className = 'dash-activity-time';
+    time.textContent = relTime(t.updated_at);
+    row.appendChild(time);
+    row.addEventListener('click', function() {
+      expandedTaskId = t.id;
+      navigateTo('tasks');
+    });
+    container.appendChild(row);
+  });
+}
 
 // Filters
 function setFilter(filter, btn) {
