@@ -393,11 +393,10 @@ body.amber .task-card:hover { background: oklch(52% 0.18 52 / 0.05); }
   display: flex; flex-direction: column; gap: 12px; overflow: hidden;
 }
 .modal-box h3 { font-size: 16px; }
-.modal-box input, .modal-box select, .modal-box textarea { width: 100%; max-width: 100%; min-width: 0; }
-.modal-date-field { overflow: hidden; }
+.modal-box input, .modal-box select, .modal-box textarea { width: 100%; }
 .modal-actions { display: flex; gap: 10px; }
-.modal-date-field { display: flex; flex-direction: column; gap: 3px; }
-.modal-date-label { font-size: 11px; color: var(--text-dim); }
+.modal-date-row { display: flex; gap: 8px; }
+.modal-date-label { flex: 1; font-size: 11px; color: var(--text-dim); }
 
 /* ── Admin ── */
 .admin-content { padding: 24px; max-width: 800px; margin: 0 auto; }

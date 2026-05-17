@@ -236,13 +236,13 @@
         <option value="medium" selected>Medium Priority</option>
         <option value="low">Low Priority</option>
       </select>
-      <div class="modal-date-field">
-        <label for="mt-start" class="modal-date-label">Start date</label>
-        <input id="mt-start" type="date">
+      <div class="modal-date-row">
+        <span class="modal-date-label">Start date</span>
+        <span class="modal-date-label">Due date</span>
       </div>
-      <div class="modal-date-field">
-        <label for="mt-due" class="modal-date-label">Due date</label>
-        <input id="mt-due" type="date">
+      <div class="modal-date-row">
+        <input id="mt-start" type="date" style="flex:1;min-width:0">
+        <input id="mt-due" type="date" style="flex:1;min-width:0">
       </div>
       <select id="mt-project">
         <option value="">No Project</option>
