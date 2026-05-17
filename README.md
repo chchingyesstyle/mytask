@@ -37,11 +37,11 @@ A personal task manager with an integrated AI assistant, built on FastAPI, SQLit
 - **AI context injection** — KB docs automatically included in AI action calls and chat panel
 
 ### UI & UX
-- **OKLCH color system** — Warm charcoal base with amber accent; perceptually uniform across both modes
-- **Light / dark mode** — Toggle in sidebar; persists across sessions via localStorage
+- **OKLCH color system** — Perceptually uniform color across all themes
+- **5 color themes** — Dark, Light, Forest (green dark), Amber (warm light), Midnight (violet dark); cycle with the theme button in the sidebar; persists across sessions via localStorage
 - **Relative dates** — Task card meta shows "Due today", "Due tomorrow", "in 3 days", "2d overdue" instead of raw ISO strings
 - **Undo-on-delete** — Deleting any task, tag, project, or status shows an 8-second undo toast; no confirm dialogs anywhere
-- **Mobile responsive** — Hamburger drawer nav for small screens
+- **Mobile responsive** — Hamburger drawer nav for small screens; iOS viewport and auto-zoom fixes; touch-optimised inputs
 - **Change password** — Any user can change their own password from the sidebar footer
 - **Admin panel** — Manage users and tags
 - **Keyboard navigation** — Full focus-visible rings; Escape closes modals; Enter/Ctrl+Enter shortcuts throughout
@@ -135,7 +135,7 @@ docker cp static/index.html mytask-mytask-1:/app/static/index.html
 ├── static/
 │   ├── index.html       # Main app shell
 │   ├── app.js           # All frontend logic (~3500 lines)
-│   ├── style.css        # CSS with OKLCH custom properties; body.light overrides
+│   ├── style.css        # CSS with OKLCH custom properties; body.light/forest/amber/midnight theme overrides
 │   ├── admin.html       # Admin panel
 │   └── admin.js         # Admin panel logic
 ├── .impeccable/

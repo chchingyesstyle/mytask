@@ -115,8 +115,9 @@ docker cp static/index.html mytask-mytask-1:/app/static/index.html
 
 **Color system:**
 - CSS custom properties use OKLCH throughout; no hardcoded hex colors in `style.css` (except `rgba(0,0,0,...)` for shadows/overlays)
-- Dark mode vars defined on `:root`; light mode overrides on `body.light`
-- `body.light` CSS class overrides all `--bg-*`/`--border`/`--text` vars; `applyTheme(theme)` syncs class + localStorage + button labels
+- Dark mode vars defined on `:root`; additional themes override the same custom properties via body class
+- Theme cycler: `THEMES = ['dark','light','forest','amber','midnight']` in app.js; `applyTheme(theme)` strips all theme classes then adds the active one; FOUC snippet at top of app.js applies saved non-dark theme class before render
+- Theme CSS classes: `body.light` (slate-mist), `body.forest` (deep greens/emerald), `body.amber` (warm honey light), `body.midnight` (violet dark) — each overrides `--bg-*`, `--border`, `--text`, `--accent`, `color-scheme`
 - Sidebar icons use Unicode geometric symbols (✓ ◈ ⊡ # ◎ ⚙) — no emoji
 
 **Accessibility:**
@@ -133,6 +134,8 @@ docker cp static/index.html mytask-mytask-1:/app/static/index.html
 - iOS Safari ignores `color` on `input`/`select`/`textarea` — use `-webkit-text-fill-color: var(--text)` instead; `::placeholder` also needs `-webkit-text-fill-color: var(--text-dim)` and `opacity: 1` (Firefox strips opacity by default)
 - Declare `color-scheme: dark` on `:root` and `color-scheme: light` on `body.light` — without it, OS-level input styling overrides your theme colors on iOS
 - Use `:not(:empty)` to avoid phantom margins on conditionally-populated containers: `.task-notes-container:not(:empty) { margin-top: 8px; }` — plain `margin-top` on the container adds space even when empty
+- `input[type="date"]` must be a direct flex child with `flex:1;min-width:0` to be constrained on iOS — wrapping in a div and using `width:100%` does NOT work; iOS date inputs have an intrinsic minimum width that `width:100%` cannot override
+- Mobile media query font-size overrides need `!important` — component selectors like `.chat-input-row input` (specificity 0,1,1) beat bare `input` (0,0,1) without it
 - `TABLE_COLS`, `tableSort`, `tableExpanded`, `tableHiddenCols` (localStorage) — table view state vars
 - `renderTable()`, `buildTableRow()`, `buildSubtaskRow()`, `openTableCellEdit()` — table view; wired via `renderCurrentView()`
 - `renderKBPage()`, `buildKBDocCard()` — KB sidebar page (label: "Knowledge"); register in `navigateTo()` and add click listeners in `DOMContentLoaded`
@@ -167,5 +170,6 @@ docker cp static/index.html mytask-mytask-1:/app/static/index.html
 - `.env` holds `JWT_SECRET_KEY`, `ADMIN_PASSWORD`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`
 - App container name: `mytask-mytask-1`; Nginx: `mytask-nginx-1`
 - Python/backend changes require `./docker.sh rebuild`; static file changes can use `docker cp`
+- `.env` changes require `./docker.sh rebuild` — `docker compose restart` does NOT reload env vars; verify with `docker exec mytask-mytask-1 env | grep -E "OPENAI|MODEL"` and `curl -s http://localhost:8080/api/info`
 - LiteLLM proxy at `/u01/litellm` (config: `config.yaml`, key: in `.env`); reachable from container at `http://172.20.0.1:4000`
 - No browser (Chrome/Playwright) is installed on the server — MCP browser tools fail; UI verification requires the user to open the app manually at http://10.0.0.149:8080
