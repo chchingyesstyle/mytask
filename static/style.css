@@ -579,7 +579,7 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
   .chat-widget { width: calc(100vw - 24px); right: 12px; height: calc(100dvh - 90px); max-height: 400px; bottom: 68px; }
   .chat-fab { bottom: 16px; right: 16px; }
   .login-box { width: calc(100vw - 40px); max-width: 320px; }
-  input, select, textarea { font-size: 16px; }
+  input, select, textarea { font-size: 16px !important; }
 }
 
 /* ── Tablet (769–1024px): desktop layout but compressed ── */
