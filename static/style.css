@@ -395,6 +395,8 @@ body.amber .task-card:hover { background: oklch(52% 0.18 52 / 0.05); }
 .modal-box h3 { font-size: 16px; }
 .modal-box input, .modal-box select, .modal-box textarea { width: 100%; }
 .modal-actions { display: flex; gap: 10px; }
+.modal-date-row { display: flex; gap: 8px; }
+.modal-date-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 
 /* ── Admin ── */
 .admin-content { padding: 24px; max-width: 800px; margin: 0 auto; }
@@ -580,6 +582,7 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
   .chat-fab { bottom: 16px; right: 16px; }
   .login-box { width: calc(100vw - 40px); max-width: 320px; }
   .modal-box { width: calc(100vw - 32px); max-width: 360px; padding: 20px 16px; }
+  .modal-date-row { flex-direction: column; }
   input, select, textarea { font-size: 16px !important; }
 }
 
@@ -588,6 +591,9 @@ input[type="color"] { width: 40px; height: 32px; padding: 2px; cursor: pointer; 
   .sidebar { width: 120px; }
   .view-switcher { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .view-tab { white-space: nowrap; flex-shrink: 0; font-size: 11px; padding: 5px 9px; }
+  .modal-box { width: calc(100vw - 32px); max-width: 400px; }
+  .modal-date-row { flex-direction: column; }
+  input, select, textarea { font-size: 16px !important; }
 }
 
 /* ── View switcher ── */
