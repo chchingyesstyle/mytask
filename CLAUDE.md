@@ -172,4 +172,5 @@ docker cp static/index.html mytask-mytask-1:/app/static/index.html
 - Python/backend changes require `./docker.sh rebuild`; static file changes can use `docker cp`
 - `.env` changes require `./docker.sh rebuild` — `docker compose restart` does NOT reload env vars; verify with `docker exec mytask-mytask-1 env | grep -E "OPENAI|MODEL"` and `curl -s http://localhost:8080/api/info`
 - LiteLLM proxy at `/u01/litellm` (config: `config.yaml`, key: in `.env`); reachable from container at `http://172.20.0.1:4000`
+- Active AI: Nvidia NIM (`https://integrate.api.nvidia.com/v1`), model `meta/llama-3.1-8b-instruct` (fast, confirmed working); `meta/llama-3.3-70b-instruct` also works but slower; `mistralai/mistral-7b-instruct-v0.3` returns 404 on this account
 - No browser (Chrome/Playwright) is installed on the server — MCP browser tools fail; UI verification requires the user to open the app manually at http://10.0.0.149:8080
